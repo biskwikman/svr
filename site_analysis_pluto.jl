@@ -1,5 +1,5 @@
 ### A Pluto.jl notebook ###
-# v0.19.26
+# v0.19.32
 
 using Markdown
 using InteractiveUtils
@@ -9,17 +9,29 @@ begin
 	using CSV
 	using DataFrames
 	using CairoMakie
+	using GLM
+	using Printf
 end
 
 # ╔═╡ a1c16bf8-5cde-46ca-be3e-fe9bdd9d4406
 begin
+	for ens in 201:210
+		input_file = @sprintf("./prep_input/svr.test.ALL.GPP.%i.txt", ens)
+		println(input_file)
+	end
 	input_df = DataFrame(CSV.File("./prep_input/svr.test.ALL.GPP.201.txt", header=false))
-	output_df = DataFrame(CSV.File("./csv/svr.test.ALL.GPP.201.csv", header=false))
-	input_df
-end
+	output_df = DataFrame(CSV.File("./CROSSVAL/output_lvmar/CV_201_ALL_GPP.csv", header=false))
+	println("prep", size(input_df))
+	println("predict", size(output_df))
 
-# ╔═╡ 9868e7d8-928c-49af-831d-0a2f797b5e94
-length(output_df[:,1])
+	input_df[!, "id"] = string.(input_df[:, 1], "_", input_df[:, 2], "_", input_df[:, 3])
+	output_df[!, "id"] = string.(output_df[:, 3], "_", output_df[:, 4], "_", output_df[:, 5])
+
+	# For some reason there were some records in both dfs that did not match, delete them
+	filter!("id" => x -> x in output_df[!, "id"], input_df)
+	filter!("id" => x -> x in input_df[!, "id"], output_df)
+	println(size(input_df), size(output_df))
+end
 
 # ╔═╡ cf17f699-8703-4fab-ac58-583c0fb65db6
 begin
@@ -34,17 +46,27 @@ begin
 	f
 end
 
+# ╔═╡ f39a7086-eb65-4f52-a5cf-dcd59348849d
+begin
+df = DataFrame(x = y_i, Y = y_o)
+model = lm(@formula(Y ~ x), df)
+r2(model)
+end
+
 # ╔═╡ 00000000-0000-0000-0000-000000000001
 PLUTO_PROJECT_TOML_CONTENTS = """
 [deps]
 CSV = "336ed68f-0bac-5ca0-87d4-7b16caf5d00b"
 CairoMakie = "13f3f980-e62b-5c42-98c6-ff1f3baf88f0"
 DataFrames = "a93c6f00-e57d-5684-b7b6-d8193f3e46c0"
+GLM = "38e38edf-8417-5370-95a0-9cbb8c7f171a"
+Printf = "de0858da-6303-5e67-8744-51eddeeeb8d7"
 
 [compat]
 CSV = "~0.10.11"
 CairoMakie = "~0.6.2"
 DataFrames = "~1.6.1"
+GLM = "~1.9.0"
 """
 
 # ╔═╡ 00000000-0000-0000-0000-000000000002
@@ -53,7 +75,7 @@ PLUTO_MANIFEST_TOML_CONTENTS = """
 
 julia_version = "1.9.4"
 manifest_format = "2.0"
-project_hash = "6f1176a94d9ecc926ab0dc1ebd1e74d50081e60e"
+project_hash = "58bc6b730018a1777505c0c3b102eee394803e9d"
 
 [[deps.AbstractFFTs]]
 deps = ["LinearAlgebra"]
@@ -403,6 +425,12 @@ version = "1.0.10+0"
 [[deps.Future]]
 deps = ["Random"]
 uuid = "9fa8497b-333b-5362-9e8d-4d0656e87820"
+
+[[deps.GLM]]
+deps = ["Distributions", "LinearAlgebra", "Printf", "Reexport", "SparseArrays", "SpecialFunctions", "Statistics", "StatsAPI", "StatsBase", "StatsFuns", "StatsModels"]
+git-tree-sha1 = "273bd1cd30768a2fddfa3fd63bbc746ed7249e5f"
+uuid = "38e38edf-8417-5370-95a0-9cbb8c7f171a"
+version = "1.9.0"
 
 [[deps.GeometryBasics]]
 deps = ["EarCut_jll", "IterTools", "LinearAlgebra", "StaticArrays", "StructArrays", "Tables"]
@@ -965,6 +993,11 @@ uuid = "9e88b42a-f829-5b0c-bbe9-9e923198166b"
 deps = ["Distributed", "Mmap", "Random", "Serialization"]
 uuid = "1a1011a3-84de-559e-8e89-a11a2f7dc383"
 
+[[deps.ShiftedArrays]]
+git-tree-sha1 = "503688b59397b3307443af35cd953a13e8005c16"
+uuid = "1277b4bf-5013-50f5-be3d-901d8477a67a"
+version = "2.0.0"
+
 [[deps.Showoff]]
 deps = ["Dates", "Grisu"]
 git-tree-sha1 = "91eddf657aca81df9ae6ceb20b959ae5653ad1de"
@@ -1066,6 +1099,12 @@ deps = ["ChainRulesCore", "InverseFunctions", "IrrationalConstants", "LogExpFunc
 git-tree-sha1 = "5950925ff997ed6fb3e985dcce8eb1ba42a0bbe7"
 uuid = "4c63d2b9-4356-54db-8cca-17b64c39e42c"
 version = "0.9.18"
+
+[[deps.StatsModels]]
+deps = ["DataAPI", "DataStructures", "LinearAlgebra", "Printf", "REPL", "ShiftedArrays", "SparseArrays", "StatsAPI", "StatsBase", "StatsFuns", "Tables"]
+git-tree-sha1 = "5cf6c4583533ee38639f73b880f35fc85f2941e0"
+uuid = "3eaba693-59b7-5ba5-a881-562e759f1c8d"
+version = "0.7.3"
 
 [[deps.StringManipulation]]
 deps = ["PrecompileTools"]
@@ -1291,7 +1330,7 @@ version = "3.5.0+0"
 # ╔═╡ Cell order:
 # ╠═b3dd68ba-8512-11ee-367a-e5bba69e1e78
 # ╠═a1c16bf8-5cde-46ca-be3e-fe9bdd9d4406
-# ╠═9868e7d8-928c-49af-831d-0a2f797b5e94
 # ╠═cf17f699-8703-4fab-ac58-583c0fb65db6
+# ╠═f39a7086-eb65-4f52-a5cf-dcd59348849d
 # ╟─00000000-0000-0000-0000-000000000001
 # ╟─00000000-0000-0000-0000-000000000002
