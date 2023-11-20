@@ -1,5 +1,5 @@
 ### A Pluto.jl notebook ###
-# v0.19.26
+# v0.19.32
 
 using Markdown
 using InteractiveUtils
@@ -22,18 +22,26 @@ begin
 	reverse!(mean_array_c5, dims=2)
 	replace!(mean_array, -999.0 => missing)
 	replace!(mean_array_c5, -999.0 => missing)
-	println(maximum(skipmissing(mean_array)))
-	println(maximum(skipmissing(mean_array_c5)))
-	
 
-	f = Figure(backgroundcolor = RGBf(0.97, 0.97, 0.97))
-	ax = Axis(
+	mean_array = mean_array * 365 / 1000
+	mean_array_c5 = mean_array_c5 * 365 / 1000
+		println(maximum(skipmissing(mean_array)))
+	println(maximum(skipmissing(mean_array_c5)))
+
+	f = Figure(resolution=(1000,450), backgroundcolor = RGBf(0.97, 0.97, 0.97))
+	ax1 = Axis(
 		f[1,1], 
-		title=rich("GPP (kgC m",superscript("-2"),"year",superscript("-1"),")"),
+		title=rich("GPP (kgC m",superscript("-2"),"year",superscript("-1"),") V6.1"),
 	)
-	hm = heatmap!(ax, 60:180, 10:80, mean_array, colormap=colormap)
-	Colorbar(f[1,2], hm, 
-		# tellwidth=false,
+	hm = heatmap!(ax1, 60:180, 10:80, mean_array, colormap=colormap, colorrange=(0, 4))
+	
+	ax2 = Axis(
+		f[1,2], 
+		title=rich("GPP (kgC m",superscript("-2"),"year",superscript("-1"),") V5"),
+	)
+	hm = heatmap!(ax2, 60:180, 10:80, mean_array_c5, colormap=colormap, colorrange=(0, 4))
+	Colorbar(f[1,3], hm, 
+		tellwidth=true,
 		halign=:left
 	)
 	f
