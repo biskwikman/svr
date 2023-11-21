@@ -63,8 +63,8 @@ begin
 		rmse = rmsd(y_o, y_i)
 		r_squared_forest = cor(y_o_forest, y_i_forest)^2
 		rmse_forest = rmsd(y_o_forest, y_i_forest)
-		r_squared_nonforest = cor(y_o_forest, y_i_forest)^2
-		rmse_nonforest = rmsd(y_o_forest, y_i_forest)
+		r_squared_nonforest = cor(y_o_nonforest, y_i_nonforest)^2
+		rmse_nonforest = rmsd(y_o_nonforest, y_i_nonforest)
 
 		push!(gpps, y_o)
 		push!(site_stats_df, [string(ens-200), r_squared, rmse])
@@ -73,19 +73,19 @@ begin
 		push!(gpps_nonforest, y_o_nonforest)
 		push!(site_stats_nonforest_df, [string(ens-200), r_squared_nonforest, rmse_nonforest])
 	end
-	y_o = mean(gpps)
-	y_o_forest = mean(gpps_forest)
-	y_o_nonforest = mean(gpps_nonforest)
+	y_o = gpps[9]
+	y_o_forest = gpps_forest[9]
+	y_o_nonforest = gpps_nonforest[9]
 	y_o_cor = cor(y_o, y_i)^2
 	y_o_forest_cor = cor(y_o_forest, y_i_forest)^2
 	y_o_nonforest_cor = cor(y_o_nonforest, y_i_nonforest)^2
 	y_o_rmsd = rmsd(y_o, y_i)
 	y_o_forest_rmsd = rmsd(y_o_forest, y_i_forest)
 	y_o_nonforest_rmsd = rmsd(y_o_nonforest, y_i_nonforest)
-	push!(site_stats_df, ["Ensemble Mean", y_o_cor, y_o_rmsd])
-	push!(site_stats_forest_df, ["Ensemble Mean", y_o_forest_cor, y_o_forest_rmsd])
-	push!(site_stats_nonforest_df, ["Ensemble Mean", y_o_nonforest_cor, y_o_nonforest_rmsd])
-	site_stats_nonforest_df
+	# push!(site_stats_df, ["Ensemble Mean", y_o_cor, y_o_rmsd])
+	# push!(site_stats_forest_df, ["Ensemble Mean", y_o_forest_cor, y_o_forest_rmsd])
+	# push!(site_stats_nonforest_df, ["Ensemble Mean", y_o_nonforest_cor, y_o_nonforest_rmsd])
+	site_stats_df
 	
 end
 
@@ -105,8 +105,8 @@ end
 begin
 	f = Figure(backgroundcolor = RGBf(0.98, 0.98, 0.98), resolution = (600, 1200))
 	ax1 = Axis(f[1, 1], title="All sites GPP", 
-		xlabel=rich("Obs GPP (gC m",superscript("-2"),"day",superscript("-1"),")"),
-		ylabel=rich("SVR GPP (gC m",superscript("-2"),"day",superscript("-1"),")"),
+		# xlabel=rich("Obs GPP (gC m",superscript("-2"),"day",superscript("-1"),")"),
+		# ylabel=rich("SVR GPP (gC m",superscript("-2"),"day",superscript("-1"),")"),
 		limits=(0, 18, 0, 18)
 	)
 	scatter!(ax1, y_i, y_o; markersize=3)
@@ -124,8 +124,8 @@ begin
 	)
 
 	ax2 = Axis(f[2, 1], title="Forest sites GPP", 
-		xlabel=rich("Obs GPP (gC m",superscript("-2"),"day",superscript("-1"),")"),
-		ylabel=rich("SVR GPP (gC m",superscript("-2"),"day",superscript("-1"),")"),
+		# xlabel=rich("Obs GPP (gC m",superscript("-2"),"day",superscript("-1"),")"),
+		# ylabel=rich("SVR GPP (gC m",superscript("-2"),"day",superscript("-1"),")"),
 		limits=(0, 18, 0, 18)
 	)
 	scatter!(ax2, y_i_forest, y_o_forest; markersize=3)
@@ -162,9 +162,6 @@ begin
 	)
 	f
 end
-
-# ╔═╡ 6ee84757-ebcc-4c69-83e7-926313f7ec24
-
 
 # ╔═╡ 2d8753b7-b58b-4532-827e-cc03b00f04f1
 html"""<style>
@@ -1840,7 +1837,6 @@ version = "3.5.0+0"
 # ╠═a1c16bf8-5cde-46ca-be3e-fe9bdd9d4406
 # ╠═97fce899-bdf2-4afa-9851-7a9ec1ba408b
 # ╠═cf17f699-8703-4fab-ac58-583c0fb65db6
-# ╠═6ee84757-ebcc-4c69-83e7-926313f7ec24
 # ╠═2d8753b7-b58b-4532-827e-cc03b00f04f1
 # ╟─00000000-0000-0000-0000-000000000001
 # ╟─00000000-0000-0000-0000-000000000002

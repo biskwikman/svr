@@ -4,69 +4,166 @@
 using Markdown
 using InteractiveUtils
 
-# ╔═╡ a25694a8-8775-11ee-17d3-8113833368f7
+# ╔═╡ 9abe3722-8816-11ee-0bfb-ed791b60219e
 begin
+	using CSV
+	using DataFrames
 	using CairoMakie
+	using GLM
+	using Printf
+	using Statistics
+	using StatsBase
 end
 
-# ╔═╡ 79cf2645-dea8-4ec4-9204-4d33d71c49c1
+# ╔═╡ d026ffd0-70cd-443b-bebb-7d5095dd3148
 begin
-	colormap = Reverse(:bamako)
-	mean_array = Array{Float32, 2}(undef, 480, 360)
-	mean_array_c5 = Array{Float32, 2}(undef, 480, 360)
-	mean_array_c6 = Array{Float32, 2}(undef, 480, 360)
-	read!("./out/YEAR_cor/GPP.ALL.AVERAGE.flt", mean_array)
-	read!("./out_c5/YEAR_cor/GPP.ALL.AVERAGE.flt", mean_array_c5)
-	read!("./out_c6/YEAR_cor/GPP.ALL.AVERAGE.flt", mean_array_c6)
-	mean_array = convert(Array{Union{Missing, Float32}}, mean_array)
-	mean_array_c5 = convert(Array{Union{Missing, Float32}}, mean_array_c5)
-	mean_array_c6 = convert(Array{Union{Missing, Float32}}, mean_array_c6)
-	reverse!(mean_array, dims=2)
-	reverse!(mean_array_c5, dims=2)
-	reverse!(mean_array_c6, dims=2)
-	replace!(mean_array, -999.0 => missing)
-	replace!(mean_array_c5, -999.0 => missing)
-	replace!(mean_array_c6, -999.0 => missing)
+	veg_df = DataFrame(CSV.File("./veg_key.csv"))
+	forest_sites_df = filter("veg_type" => x -> x in [1, 2, 3, 4, 5], veg_df)
+	forest_ids = forest_sites_df[!, 2]
+end
 
-	mean_array = mean_array * 365 / 1000
-	mean_array_c5 = mean_array_c5 * 365 / 1000
-	mean_array_c6 = mean_array_c6 * 365 / 1000
-	println(maximum(skipmissing(mean_array)))
-	println(maximum(skipmissing(mean_array_c5)))
-	println(maximum(skipmissing(mean_array_c6)))
-
-	colorrange = (0, 3)
-
-	f = Figure(resolution=(1300,450), backgroundcolor = RGBf(0.97, 0.97, 0.97))
-	ax1 = Axis(
-		f[1,1], 
-		title="V5",
-	)
-	hm = heatmap!(ax1, 60:180, 10:80, mean_array_c5, colormap=colormap, colorrange=colorrange)
+# ╔═╡ b90dfab9-9e23-48d4-b4b1-c270e838ff96
+begin
+	site_stats_df = DataFrame(ensemble=String[], r_squared=Float32[], RMSE=Float32[])
+	site_stats_forest_df = DataFrame(ensemble=String[], r_squared=Float32[], RMSE=Float32[])
+	site_stats_nonforest_df = DataFrame(ensemble=String[], r_squared=Float32[], RMSE=Float32[])
+	gpps::Vector{Vector{Float64}} = []
+	gpps_forest::Vector{Vector{Float64}} = []
+	gpps_nonforest::Vector{Vector{Float64}} = []
+	input_df = DataFrame(CSV.File("./prep_input_c6/svr.test.ALL.GPP.201.txt", header=false))
+	input_df[!, "id"] = string.(input_df[:, 1], "_", input_df[:, 2], "_", input_df[:, 3])
+	y_i = []
+	y_i_forest = []
+	y_i_nonforest = []
+	for ens in 201:210
+		output_file = @sprintf("./CROSSVAL_c6/output_lvmar/CV_%i_ALL_GPP.csv", ens)
+		# input_df = DataFrame(CSV.File("./prep_input/svr.test.ALL.GPP.201.txt", header=false))
+		output_df = DataFrame(CSV.File(output_file, header=false))
 	
-	ax2 = Axis(
-		f[1,2], 
-		title="V6",
-		yticklabelsvisible=false,
-	)
-	heatmap!(ax2, 60:180, 10:80, mean_array_c6, colormap=colormap, colorrange=colorrange)
+		# input_df[!, "id"] = string.(input_df[:, 1], "_", input_df[:, 2], "_", input_df[:, 3])
+		output_df[!, "id"] = string.(output_df[:, 3], "_", output_df[:, 4], "_", output_df[:, 5])
+	
+		# For some reason there were some records in both dfs that did not match, delete them
+		filter!("id" => x -> x in output_df[!, "id"], input_df)
+		filter!("id" => x -> x in input_df[!, "id"], output_df)
+		y_i = input_df[:,5]
+		y_o = output_df[:,1]
 
-	ax3 = Axis(
-		f[1,3], 
-		title="V6.1",
-		yticklabelsvisible=false,
+		forest_in_df = filter("Column3" => x -> x in forest_ids, input_df)
+		forest_out_df = filter("Column5" => x -> x in forest_ids, output_df)
+		y_i_forest = forest_in_df[:,5]
+		y_o_forest = forest_out_df[:,1]
+
+		nonforest_in_df = filter("Column3" => x -> x ∉ forest_ids, input_df)
+		nonforest_out_df = filter("Column5" => x -> x ∉ forest_ids, output_df)
+		y_i_nonforest = nonforest_in_df[:,5]
+		y_o_nonforest = nonforest_out_df[:,1]
+		
+		r_squared = cor(y_o, y_i)^2
+		rmse = rmsd(y_o, y_i)
+		r_squared_forest = cor(y_o_forest, y_i_forest)^2
+		rmse_forest = rmsd(y_o_forest, y_i_forest)
+		r_squared_nonforest = cor(y_o_nonforest, y_i_nonforest)^2
+		rmse_nonforest = rmsd(y_o_nonforest, y_i_nonforest)
+
+		push!(gpps, y_o)
+		push!(site_stats_df, [string(ens-200), r_squared, rmse])
+		push!(gpps_forest, y_o_forest)
+		push!(site_stats_forest_df, [string(ens-200), r_squared_forest, rmse_forest])
+		push!(gpps_nonforest, y_o_nonforest)
+		push!(site_stats_nonforest_df, [string(ens-200), r_squared_nonforest, rmse_nonforest])
+	end
+	y_o = gpps[9]
+	y_o_forest = gpps_forest[9]
+	y_o_nonforest = gpps_nonforest[9]
+	y_o_cor = cor(y_o, y_i)^2
+	y_o_forest_cor = cor(y_o_forest, y_i_forest)^2
+	y_o_nonforest_cor = cor(y_o_nonforest, y_i_nonforest)^2
+	y_o_rmsd = rmsd(y_o, y_i)
+	y_o_forest_rmsd = rmsd(y_o_forest, y_i_forest)
+	y_o_nonforest_rmsd = rmsd(y_o_nonforest, y_i_nonforest)
+	# push!(site_stats_df, ["Ensemble Mean", y_o_cor, y_o_rmsd])
+	# push!(site_stats_forest_df, ["Ensemble Mean", y_o_forest_cor, y_o_forest_rmsd])
+	# push!(site_stats_nonforest_df, ["Ensemble Mean", y_o_nonforest_cor, y_o_nonforest_rmsd])
+	site_stats_df
+	
+end
+
+# ╔═╡ 850094ef-8d92-4d43-b575-769d6b7f55d6
+begin
+df = DataFrame(x = y_i, Y = y_o)
+ols = lm(@formula(Y ~ x), df)
+
+forest_df = DataFrame(x = y_i_forest, Y = y_o_forest)
+ols_forest = lm(@formula(Y ~ x), forest_df)
+
+nonforest_df = DataFrame(x = y_i_nonforest, Y = y_o_nonforest)
+ols_nonforest = lm(@formula(Y ~ x), nonforest_df)
+end
+
+# ╔═╡ 91a3828a-8086-4621-9d10-50cb92b4753a
+begin
+	f = Figure(backgroundcolor = RGBf(0.98, 0.98, 0.98), resolution = (600, 1200))
+	ax1 = Axis(f[1, 1], title="All sites GPP", 
+		# xlabel=rich("Obs GPP (gC m",superscript("-2"),"day",superscript("-1"),")"),
+		# ylabel=rich("SVR GPP (gC m",superscript("-2"),"day",superscript("-1"),")"),
+		limits=(0, 18, 0, 18)
 	)
-	heatmap!(ax3, 60:180, 10:80, mean_array, colormap=colormap, colorrange=colorrange)
-	Colorbar(f[1,4], hm, 
-		tellwidth=true,
-		halign=:left
+	scatter!(ax1, y_i, y_o; markersize=3)
+	lines!(ax1, y_i, predict(ols), color="red")
+	text!(
+		ax1, 0, 1, 
+		text=
+			rich("y = $(round(coef(ols)[2], digits = 2))x + $(round(coef(ols)[1], digits = 2)) \n" *
+			"r", superscript("2"), " = $(round(r2(ols), digits = 2)) \n" *
+			"RMSE = $(round(y_o_rmsd, digits=2)) \n" *
+			"n = $(length(y_o))"), 
+		align=(:left, :top),
+		offset = (4, -2),
+		space=:relative,
 	)
 
-	Label(f[0, 1:3], rich("GPP (kgC m",superscript("-2"),"year",superscript("-1"),") "), valign = :bottom, font=:bold)
+	ax2 = Axis(f[2, 1], title="Forest sites GPP", 
+		# xlabel=rich("Obs GPP (gC m",superscript("-2"),"day",superscript("-1"),")"),
+		# ylabel=rich("SVR GPP (gC m",superscript("-2"),"day",superscript("-1"),")"),
+		limits=(0, 18, 0, 18)
+	)
+	scatter!(ax2, y_i_forest, y_o_forest; markersize=3)
+	lines!(ax2, y_i_forest, predict(ols_forest), color="red")
+	text!(
+		ax2, 0, 1, 
+		text=
+			rich("y = $(round(coef(ols_forest)[2], digits = 2))x + $(round(coef(ols_forest)[1], digits = 2)) \n" *
+			"r", superscript("2"), " = $(round(r2(ols_forest), digits = 2)) \n" *
+			"RMSE = $(round(y_o_forest_rmsd, digits=2)) \n" *
+			"n = $(length(y_o_forest))"), 
+		align=(:left, :top),
+		offset = (4, -2),
+		space=:relative,
+	)
+
+	ax3 = Axis(f[3, 1], title="Non-forest sites GPP", 
+		xlabel=rich("Obs GPP (gC m",superscript("-2"),"day",superscript("-1"),")"),
+		ylabel=rich("SVR GPP (gC m",superscript("-2"),"day",superscript("-1"),")"),
+		limits=(0, 18, 0, 18)
+	)
+	scatter!(ax3, y_i_nonforest, y_o_nonforest; markersize=3)
+	lines!(ax3, y_i_nonforest, predict(ols_nonforest), color="red")
+	text!(
+		ax3, 0, 1, 
+		text=
+			rich("y = $(round(coef(ols_nonforest)[2], digits = 2))x + $(round(coef(ols_nonforest)[1], digits = 2)) \n" *
+			"r", superscript("2"), " = $(round(r2(ols_nonforest), digits = 2)) \n" *
+			"RMSE = $(round(y_o_nonforest_rmsd, digits=2)) \n" *
+			"n = $(length(y_o_nonforest))"), 
+		align=(:left, :top),
+		offset = (4, -2),
+		space=:relative,
+	)
 	f
 end
 
-# ╔═╡ de2d1eb4-c7b3-4ce7-9f3a-47711e64c4f8
+# ╔═╡ 55727f27-0b05-40d8-91a6-3a62dc679a30
 html"""<style>
 main {
     max-width: 1500px;
@@ -77,10 +174,20 @@ main {
 # ╔═╡ 00000000-0000-0000-0000-000000000001
 PLUTO_PROJECT_TOML_CONTENTS = """
 [deps]
+CSV = "336ed68f-0bac-5ca0-87d4-7b16caf5d00b"
 CairoMakie = "13f3f980-e62b-5c42-98c6-ff1f3baf88f0"
+DataFrames = "a93c6f00-e57d-5684-b7b6-d8193f3e46c0"
+GLM = "38e38edf-8417-5370-95a0-9cbb8c7f171a"
+Printf = "de0858da-6303-5e67-8744-51eddeeeb8d7"
+Statistics = "10745b16-79ce-11e8-11f9-7d13ad32a3b2"
+StatsBase = "2913bbd2-ae8a-5f71-8c99-4fb6c76f3a91"
 
 [compat]
+CSV = "~0.10.11"
 CairoMakie = "~0.10.12"
+DataFrames = "~1.6.1"
+GLM = "~1.9.0"
+StatsBase = "~0.34.2"
 """
 
 # ╔═╡ 00000000-0000-0000-0000-000000000002
@@ -89,7 +196,7 @@ PLUTO_MANIFEST_TOML_CONTENTS = """
 
 julia_version = "1.9.4"
 manifest_format = "2.0"
-project_hash = "e44037efdf6abbaf63bb8aaeecb41f70d7425660"
+project_hash = "a1a771073263dcd10b94e5865b017fad22b2eaa6"
 
 [[deps.AbstractFFTs]]
 deps = ["LinearAlgebra"]
@@ -204,6 +311,12 @@ git-tree-sha1 = "e329286945d0cfc04456972ea732551869af1cfc"
 uuid = "4e9b3aee-d8a1-5a3d-ad8b-7d824db253f0"
 version = "1.0.1+0"
 
+[[deps.CSV]]
+deps = ["CodecZlib", "Dates", "FilePathsBase", "InlineStrings", "Mmap", "Parsers", "PooledArrays", "PrecompileTools", "SentinelArrays", "Tables", "Unicode", "WeakRefStrings", "WorkerUtilities"]
+git-tree-sha1 = "44dbf560808d49041989b8a96cae4cffbeb7966a"
+uuid = "336ed68f-0bac-5ca0-87d4-7b16caf5d00b"
+version = "0.10.11"
+
 [[deps.Cairo]]
 deps = ["Cairo_jll", "Colors", "Glib_jll", "Graphics", "Libdl", "Pango_jll"]
 git-tree-sha1 = "d0b3f8b4ad16cb0a2988c6788646a5e6a17b6b1b"
@@ -237,6 +350,12 @@ weakdeps = ["SparseArrays"]
 
     [deps.ChainRulesCore.extensions]
     ChainRulesCoreSparseArraysExt = "SparseArrays"
+
+[[deps.CodecZlib]]
+deps = ["TranscodingStreams", "Zlib_jll"]
+git-tree-sha1 = "cd67fc487743b2f0fd4380d4cbd3a24660d0eec8"
+uuid = "944b1d66-785c-5afd-91f1-9de20f533193"
+version = "0.7.3"
 
 [[deps.ColorBrewer]]
 deps = ["Colors", "JSON", "Test"]
@@ -310,10 +429,21 @@ git-tree-sha1 = "d05d9e7b7aedff4e5b51a029dced05cfb6125781"
 uuid = "d38c429a-6771-53c6-b99e-75d170b6e991"
 version = "0.6.2"
 
+[[deps.Crayons]]
+git-tree-sha1 = "249fe38abf76d48563e2f4556bebd215aa317e15"
+uuid = "a8cc5b0e-0ffa-5ad4-8c14-923d3ee1735f"
+version = "4.1.1"
+
 [[deps.DataAPI]]
 git-tree-sha1 = "8da84edb865b0b5b0100c0666a9bc9a0b71c553c"
 uuid = "9a962f9c-6df0-11e9-0e5d-c546b8b5ee8a"
 version = "1.15.0"
+
+[[deps.DataFrames]]
+deps = ["Compat", "DataAPI", "DataStructures", "Future", "InlineStrings", "InvertedIndices", "IteratorInterfaceExtensions", "LinearAlgebra", "Markdown", "Missings", "PooledArrays", "PrecompileTools", "PrettyTables", "Printf", "REPL", "Random", "Reexport", "SentinelArrays", "SortingAlgorithms", "Statistics", "TableTraits", "Tables", "Unicode"]
+git-tree-sha1 = "04c738083f29f86e62c8afc341f0967d8717bdb8"
+uuid = "a93c6f00-e57d-5684-b7b6-d8193f3e46c0"
+version = "1.6.1"
 
 [[deps.DataStructures]]
 deps = ["Compat", "InteractiveUtils", "OrderedCollections"]
@@ -448,6 +578,12 @@ git-tree-sha1 = "299dc33549f68299137e51e6d49a13b5b1da9673"
 uuid = "5789e2e9-d7fb-5bc7-8068-2c6fae9b9549"
 version = "1.16.1"
 
+[[deps.FilePathsBase]]
+deps = ["Compat", "Dates", "Mmap", "Printf", "Test", "UUIDs"]
+git-tree-sha1 = "9f00e42f8d99fdde64d40c8ea5d14269a2e2c1aa"
+uuid = "48062228-2e41-5def-b9a4-89aafe57970f"
+version = "0.9.21"
+
 [[deps.FileWatching]]
 uuid = "7b1f6079-737a-58dc-b8bc-7a2ca5c1b5ee"
 
@@ -533,6 +669,12 @@ version = "1.0.10+0"
 [[deps.Future]]
 deps = ["Random"]
 uuid = "9fa8497b-333b-5362-9e8d-4d0656e87820"
+
+[[deps.GLM]]
+deps = ["Distributions", "LinearAlgebra", "Printf", "Reexport", "SparseArrays", "SpecialFunctions", "Statistics", "StatsAPI", "StatsBase", "StatsFuns", "StatsModels"]
+git-tree-sha1 = "273bd1cd30768a2fddfa3fd63bbc746ed7249e5f"
+uuid = "38e38edf-8417-5370-95a0-9cbb8c7f171a"
+version = "1.9.0"
 
 [[deps.GPUArraysCore]]
 deps = ["Adapt"]
@@ -645,6 +787,12 @@ git-tree-sha1 = "ea8031dea4aff6bd41f1df8f2fdfb25b33626381"
 uuid = "d25df0c9-e2be-5dd7-82c8-3ad0b3e990b9"
 version = "0.1.4"
 
+[[deps.InlineStrings]]
+deps = ["Parsers"]
+git-tree-sha1 = "9cc2baf75c6d09f9da536ddf58eb2f29dedaf461"
+uuid = "842dd82b-1e85-43dc-bf29-5d0ee9dffc48"
+version = "1.4.0"
+
 [[deps.IntegerMathUtils]]
 git-tree-sha1 = "b8ffb903da9f7b8cf695a8bead8e01814aa24b30"
 uuid = "18e54dd8-cb9d-406c-a71d-865a43cbb235"
@@ -681,6 +829,11 @@ weakdeps = ["Statistics"]
 
     [deps.IntervalSets.extensions]
     IntervalSetsStatisticsExt = "Statistics"
+
+[[deps.InvertedIndices]]
+git-tree-sha1 = "0dc7b50b8d436461be01300fd8cd45aa0274b038"
+uuid = "41ab1584-1d38-5bbf-9106-f11c6c58b48f"
+version = "1.3.0"
 
 [[deps.IrrationalConstants]]
 git-tree-sha1 = "630b497eafcc20001bba38a4651b327dcfc491d2"
@@ -1126,6 +1279,12 @@ version = "4.0.5"
     MakieCore = "20f20a25-4f0e-4fdf-b5d1-57303727442b"
     MutableArithmetics = "d8a4904e-b15c-11e9-3269-09a3773c0cb0"
 
+[[deps.PooledArrays]]
+deps = ["DataAPI", "Future"]
+git-tree-sha1 = "36d8b4b899628fb92c2749eb488d884a926614d3"
+uuid = "2dfb63ee-cc39-5dd5-95bd-886bf059d720"
+version = "1.4.3"
+
 [[deps.PositiveFactorizations]]
 deps = ["LinearAlgebra"]
 git-tree-sha1 = "17275485f373e6673f7e7f97051f703ed5b15b20"
@@ -1143,6 +1302,12 @@ deps = ["TOML"]
 git-tree-sha1 = "00805cd429dcb4870060ff49ef443486c262e38e"
 uuid = "21216c6a-2e73-6563-6e65-726566657250"
 version = "1.4.1"
+
+[[deps.PrettyTables]]
+deps = ["Crayons", "LaTeXStrings", "Markdown", "PrecompileTools", "Printf", "Reexport", "StringManipulation", "Tables"]
+git-tree-sha1 = "3f43c2aae6aa4a2503b05587ab74f4f6aeff9fd0"
+uuid = "08abe8d2-0d0c-5749-adfa-8a2ac140af0d"
+version = "2.3.0"
 
 [[deps.Primes]]
 deps = ["IntegerMathUtils"]
@@ -1251,6 +1416,12 @@ git-tree-sha1 = "3bac05bc7e74a75fd9cba4295cde4045d9fe2386"
 uuid = "6c6a2e73-6563-6170-7368-637461726353"
 version = "1.2.1"
 
+[[deps.SentinelArrays]]
+deps = ["Dates", "Random"]
+git-tree-sha1 = "0e7508ff27ba32f26cd459474ca2ede1bc10991f"
+uuid = "91c51154-3ec4-41a3-a24f-3f23e20d615c"
+version = "1.4.1"
+
 [[deps.Serialization]]
 uuid = "9e88b42a-f829-5b0c-bbe9-9e923198166b"
 
@@ -1274,6 +1445,11 @@ version = "0.4.0"
 [[deps.SharedArrays]]
 deps = ["Distributed", "Mmap", "Random", "Serialization"]
 uuid = "1a1011a3-84de-559e-8e89-a11a2f7dc383"
+
+[[deps.ShiftedArrays]]
+git-tree-sha1 = "503688b59397b3307443af35cd953a13e8005c16"
+uuid = "1277b4bf-5013-50f5-be3d-901d8477a67a"
+version = "2.0.0"
 
 [[deps.Showoff]]
 deps = ["Dates", "Grisu"]
@@ -1404,6 +1580,18 @@ version = "1.3.0"
     ChainRulesCore = "d360d2e6-b24c-11e9-a2a3-2a2ae2dbcce4"
     InverseFunctions = "3587e190-3f89-42d0-90ee-14403ec27112"
 
+[[deps.StatsModels]]
+deps = ["DataAPI", "DataStructures", "LinearAlgebra", "Printf", "REPL", "ShiftedArrays", "SparseArrays", "StatsAPI", "StatsBase", "StatsFuns", "Tables"]
+git-tree-sha1 = "5cf6c4583533ee38639f73b880f35fc85f2941e0"
+uuid = "3eaba693-59b7-5ba5-a881-562e759f1c8d"
+version = "0.7.3"
+
+[[deps.StringManipulation]]
+deps = ["PrecompileTools"]
+git-tree-sha1 = "a04cabe79c5f01f4d723cc6704070ada0b9d46d5"
+uuid = "892a3eda-7b42-436c-8928-eab12a02cf0e"
+version = "0.3.4"
+
 [[deps.StructArrays]]
 deps = ["Adapt", "ConstructionBase", "DataAPI", "GPUArraysCore", "StaticArraysCore", "Tables"]
 git-tree-sha1 = "0a3db38e4cce3c54fe7a71f831cd7b6194a54213"
@@ -1491,11 +1679,22 @@ git-tree-sha1 = "53915e50200959667e78a92a418594b428dffddf"
 uuid = "1cfade01-22cf-5700-b092-accc4b62d6e1"
 version = "0.4.1"
 
+[[deps.WeakRefStrings]]
+deps = ["DataAPI", "InlineStrings", "Parsers"]
+git-tree-sha1 = "b1be2855ed9ed8eac54e5caff2afcdb442d52c23"
+uuid = "ea10d353-3f73-51f8-a26c-33c1cb351aa5"
+version = "1.4.2"
+
 [[deps.WoodburyMatrices]]
 deps = ["LinearAlgebra", "SparseArrays"]
 git-tree-sha1 = "de67fa59e33ad156a590055375a30b23c40299d3"
 uuid = "efce3f68-66dc-5838-9240-27a6d6f5f9b6"
 version = "0.5.5"
+
+[[deps.WorkerUtilities]]
+git-tree-sha1 = "cd1659ba0d57b71a464a29e64dbc67cfe83d54e7"
+uuid = "76eceee3-57b5-4d4a-8e66-0e911cebbf60"
+version = "1.6.1"
 
 [[deps.XML2_jll]]
 deps = ["Artifacts", "JLLWrappers", "Libdl", "Libiconv_jll", "Zlib_jll"]
@@ -1633,8 +1832,11 @@ version = "3.5.0+0"
 """
 
 # ╔═╡ Cell order:
-# ╠═a25694a8-8775-11ee-17d3-8113833368f7
-# ╠═79cf2645-dea8-4ec4-9204-4d33d71c49c1
-# ╠═de2d1eb4-c7b3-4ce7-9f3a-47711e64c4f8
+# ╠═9abe3722-8816-11ee-0bfb-ed791b60219e
+# ╠═d026ffd0-70cd-443b-bebb-7d5095dd3148
+# ╠═b90dfab9-9e23-48d4-b4b1-c270e838ff96
+# ╠═850094ef-8d92-4d43-b575-769d6b7f55d6
+# ╠═91a3828a-8086-4621-9d10-50cb92b4753a
+# ╠═55727f27-0b05-40d8-91a6-3a62dc679a30
 # ╟─00000000-0000-0000-0000-000000000001
 # ╟─00000000-0000-0000-0000-000000000002
