@@ -7,6 +7,7 @@ using InteractiveUtils
 # ╔═╡ a25694a8-8775-11ee-17d3-8113833368f7
 begin
 	using CairoMakie
+	using Printf
 end
 
 # ╔═╡ 79cf2645-dea8-4ec4-9204-4d33d71c49c1
@@ -15,7 +16,7 @@ begin
 	mean_array = Array{Float32, 2}(undef, 480, 360)
 	mean_array_c5 = Array{Float32, 2}(undef, 480, 360)
 	mean_array_c6 = Array{Float32, 2}(undef, 480, 360)
-	read!("./out/YEAR_cor/GPP.ALL.AVERAGE.flt", mean_array)
+	read!("./out_c61/YEAR_cor/GPP.ALL.AVERAGE.flt", mean_array)
 	read!("./out_c5/YEAR_cor/GPP.ALL.AVERAGE.flt", mean_array_c5)
 	read!("./out_c6/YEAR_cor/GPP.ALL.AVERAGE.flt", mean_array_c6)
 	mean_array = convert(Array{Union{Missing, Float32}}, mean_array)
@@ -78,6 +79,7 @@ main {
 PLUTO_PROJECT_TOML_CONTENTS = """
 [deps]
 CairoMakie = "13f3f980-e62b-5c42-98c6-ff1f3baf88f0"
+Printf = "de0858da-6303-5e67-8744-51eddeeeb8d7"
 
 [compat]
 CairoMakie = "~0.10.12"
@@ -89,7 +91,7 @@ PLUTO_MANIFEST_TOML_CONTENTS = """
 
 julia_version = "1.9.4"
 manifest_format = "2.0"
-project_hash = "e44037efdf6abbaf63bb8aaeecb41f70d7425660"
+project_hash = "2fe8dd770e7bc3036b8558711cc38a86f1c8e0b2"
 
 [[deps.AbstractFFTs]]
 deps = ["LinearAlgebra"]
