@@ -1,5 +1,5 @@
 ### A Pluto.jl notebook ###
-# v0.19.26
+# v0.19.36
 
 using Markdown
 using InteractiveUtils
@@ -11,7 +11,6 @@ begin
 	using CairoMakie
 	using GLM
 	using Printf
-	using Statistics
 	using StatsBase
 end
 
@@ -20,73 +19,117 @@ begin
 	veg_df = DataFrame(CSV.File("./veg_key.csv"))
 	forest_sites_df = filter("veg_type" => x -> x in [1, 2, 3, 4, 5], veg_df)
 	forest_ids = forest_sites_df[!, 2]
+	versions = [:c05, :c06, :c61]
+	ensembles = 201:210
+end
+
+# ╔═╡ a328fc2e-4f22-450b-8b91-90ae70b83878
+# Create input DataFrames
+begin
+	input_dfs = Dict{Symbol, DataFrame}()
+	for v in versions
+		input_dfs[v] = DataFrame(CSV.File(@sprintf("./prep_input_%s/svr.test.ALL.GPP.201.txt", String(v)), header=false))
+		input_dfs[v][!, "id"] = string.(input_dfs[v][:, 1], "_", input_dfs[v][:, 2], "_", input_dfs[v][:, 3])
+		rename!(input_dfs[v], Dict(:Column1 => :Year, :Column2 => :DOY, :Column3 => :Site_ID, :Column4 => :Crossval_ID, :Column5 => :GPP))
+	end
+	input_dfs[:c05]
+end
+
+# ╔═╡ 6b19fa68-64ca-43fc-aa0a-66e1542f7a19
+# Create output DataFrames
+begin
+	output_dfs = Dict{UInt8, DataFrame}()
+	for ens in ensembles
+		output_file = @sprintf("./CROSSVAL/output_lvmar/CV_%i_ALL_GPP.csv", ens)
+		output_dfs[ens] = DataFrame(CSV.File(output_file, header=false))
+		output_dfs[ens][!, "id"] = string.(output_dfs[ens][:, 3], "_", output_dfs[ens][:, 4], "_", output_dfs[ens][:, 5])
+		rename!(output_dfs[ens], Dict(:Column1 => :GPP, :Column3 => :Year, :Column4 => :DOY, :Column5 => :Site_ID, :Column6 => :Crossval_ID))
+	end
+	output_dfs[201]
+end
+
+# ╔═╡ dfee6f08-e0c7-4bb5-8032-4d9277c1bcac
+# Filter input and output DataFrames and create inputs for regression
+begin
+	y_os = Dict{UInt8, Vector{Float32}}()
+	y_is = Dict{Symbol, Vector{Float32}}()
+	for ens in ensembles
+		for v in versions
+			filter!("id" => x -> x in output_dfs[ens][!, "id"], input_dfs[v])
+			filter!("id" => x -> x in input_dfs[v][!, "id"], output_dfs[ens])
+		end
+		y_os[ens] = output_dfs[ens][:, 1]
+	end
+
+	for v in versions
+		y_is[v] = input_dfs[v][:, 5]
+	end
 end
 
 # ╔═╡ a1c16bf8-5cde-46ca-be3e-fe9bdd9d4406
 begin
-	site_stats_df = DataFrame(ensemble=String[], r_squared=Float32[], RMSE=Float32[])
-	site_stats_forest_df = DataFrame(ensemble=String[], r_squared=Float32[], RMSE=Float32[])
-	site_stats_nonforest_df = DataFrame(ensemble=String[], r_squared=Float32[], RMSE=Float32[])
-	gpps::Vector{Vector{Float64}} = []
-	gpps_forest::Vector{Vector{Float64}} = []
-	gpps_nonforest::Vector{Vector{Float64}} = []
-	input_df = DataFrame(CSV.File("./prep_input/svr.test.ALL.GPP.201.txt", header=false))
-	input_df[!, "id"] = string.(input_df[:, 1], "_", input_df[:, 2], "_", input_df[:, 3])
-	y_i = []
-	y_i_forest = []
-	y_i_nonforest = []
-	for ens in 201:210
-		output_file = @sprintf("./CROSSVAL/output_lvmar/CV_%i_ALL_GPP.csv", ens)
-		# input_df = DataFrame(CSV.File("./prep_input/svr.test.ALL.GPP.201.txt", header=false))
-		output_df = DataFrame(CSV.File(output_file, header=false))
+	site_stats_df = DataFrame(version=Symbol[], ensemble=String[], veg_type=Symbol[], r_squared=Float32[], RMSE=Float32[])
+	# site_stats_forest_df = DataFrame(ensemble=String[], r_squared=Float32[], RMSE=Float32[])
+	# site_stats_nonforest_df = DataFrame(ensemble=String[], r_squared=Float32[], RMSE=Float32[])
 	
-		# input_df[!, "id"] = string.(input_df[:, 1], "_", input_df[:, 2], "_", input_df[:, 3])
-		output_df[!, "id"] = string.(output_df[:, 3], "_", output_df[:, 4], "_", output_df[:, 5])
-	
-		# For some reason there were some records in both dfs that did not match, delete them
-		filter!("id" => x -> x in output_df[!, "id"], input_df)
-		filter!("id" => x -> x in input_df[!, "id"], output_df)
-		y_i = input_df[:,5]
-		y_o = output_df[:,1]
-
-		forest_in_df = filter("Column3" => x -> x in forest_ids, input_df)
-		forest_out_df = filter("Column5" => x -> x in forest_ids, output_df)
-		y_i_forest = forest_in_df[:,5]
-		y_o_forest = forest_out_df[:,1]
-
-		nonforest_in_df = filter("Column3" => x -> x ∉ forest_ids, input_df)
-		nonforest_out_df = filter("Column5" => x -> x ∉ forest_ids, output_df)
-		y_i_nonforest = nonforest_in_df[:,5]
-		y_o_nonforest = nonforest_out_df[:,1]
+	# y_i = []
+	# y_i_forest = []
+	# y_i_nonforest = []
 		
-		r_squared = cor(y_o, y_i)^2
-		rmse = rmsd(y_o, y_i)
-		r_squared_forest = cor(y_o_forest, y_i_forest)^2
-		rmse_forest = rmsd(y_o_forest, y_i_forest)
-		r_squared_nonforest = cor(y_o_nonforest, y_i_nonforest)^2
-		rmse_nonforest = rmsd(y_o_nonforest, y_i_nonforest)
+	for ens in ensembles
+		# global y_i = input_df[:,5]
+		# global y_o = output_df[:,1]
 
-		push!(gpps, y_o)
-		push!(site_stats_df, [string(ens-200), r_squared, rmse])
-		push!(gpps_forest, y_o_forest)
-		push!(site_stats_forest_df, [string(ens-200), r_squared_forest, rmse_forest])
-		push!(gpps_nonforest, y_o_nonforest)
-		push!(site_stats_nonforest_df, [string(ens-200), r_squared_nonforest, rmse_nonforest])
+		# forest_in_df = filter("Column3" => x -> x in forest_ids, input_df)
+		# forest_out_df = filter("Column5" => x -> x in forest_ids, output_df)
+		# global y_i_forest = forest_in_df[:,5]
+		# global y_o_forest = forest_out_df[:,1]
+
+		# nonforest_in_df = filter("Column3" => x -> x ∉ forest_ids, input_df)
+		# nonforest_out_df = filter("Column5" => x -> x ∉ forest_ids, output_df)
+		# global y_i_nonforest = nonforest_in_df[:,5]
+		# global y_o_nonforest = nonforest_out_df[:,1]
+		for v in versions
+			r_squared = cor(y_os[ens], y_is[v])^2
+			rmse = rmsd(y_os[ens], y_is[v])
+			push!(site_stats_df, [v, string(ens-200), :All, r_squared, rmse])
+		end
+		# r_squared = cor(y_o, y_i)^2
+		# rmse = rmsd(y_o, y_i)
+		# r_squared_forest = cor(y_o_forest, y_i_forest)^2
+		# rmse_forest = rmsd(y_o_forest, y_i_forest)
+		# r_squared_nonforest = cor(y_o_nonforest, y_i_nonforest)^2
+		# rmse_nonforest = rmsd(y_o_nonforest, y_i_nonforest)
+
+		# push!(gpps, y_o)
+		# push!(site_stats_df, [string(ens-200), r_squared, rmse])
+		# push!(gpps_forest, y_o_forest)
+		# push!(site_stats_forest_df, [string(ens-200), r_squared_forest, rmse_forest])
+		# push!(gpps_nonforest, y_o_nonforest)
+		# push!(site_stats_nonforest_df, [string(ens-200), r_squared_nonforest, rmse_nonforest])
 	end
-	y_o = gpps[9]
-	y_o_forest = gpps_forest[9]
-	y_o_nonforest = gpps_nonforest[9]
-	y_o_cor = cor(y_o, y_i)^2
-	y_o_forest_cor = cor(y_o_forest, y_i_forest)^2
-	y_o_nonforest_cor = cor(y_o_nonforest, y_i_nonforest)^2
-	y_o_rmsd = rmsd(y_o, y_i)
-	y_o_forest_rmsd = rmsd(y_o_forest, y_i_forest)
-	y_o_nonforest_rmsd = rmsd(y_o_nonforest, y_i_nonforest)
+
+	y_o_mean = mean(values(y_os))
+
+	for v in versions
+		push!(site_stats_df, [v, "Ensemble Mean", :All, cor(y_o_mean, y_is[v])^2, rmsd(y_o_mean, y_is[v])])
+	end
+	site_stats_df
+
+	# Ensemble 9 performs the best so it is used here
+	# y_o = gpps[9]
+	# y_o_forest = gpps_forest[9]
+	# y_o_nonforest = gpps_nonforest[9]
+	# y_o_cor = cor(y_o, y_i)^2
+	# y_o_forest_cor = cor(y_o_forest, y_i_forest)^2
+	# y_o_nonforest_cor = cor(y_o_nonforest, y_i_nonforest)^2
+	# y_o_rmsd = rmsd(y_o, y_i)
+	# y_o_forest_rmsd = rmsd(y_o_forest, y_i_forest)
+	# y_o_nonforest_rmsd = rmsd(y_o_nonforest, y_i_nonforest)
 	# push!(site_stats_df, ["Ensemble Mean", y_o_cor, y_o_rmsd])
 	# push!(site_stats_forest_df, ["Ensemble Mean", y_o_forest_cor, y_o_forest_rmsd])
 	# push!(site_stats_nonforest_df, ["Ensemble Mean", y_o_nonforest_cor, y_o_nonforest_rmsd])
-	site_stats_df
-	
+	# site_stats_df
 end
 
 # ╔═╡ 97fce899-bdf2-4afa-9851-7a9ec1ba408b
@@ -166,7 +209,7 @@ end
 # ╔═╡ 2d8753b7-b58b-4532-827e-cc03b00f04f1
 html"""<style>
 main {
-    max-width: 1500px;
+    max-width: 60%;
     margin-left: 50px;
 }
 """
@@ -179,7 +222,6 @@ CairoMakie = "13f3f980-e62b-5c42-98c6-ff1f3baf88f0"
 DataFrames = "a93c6f00-e57d-5684-b7b6-d8193f3e46c0"
 GLM = "38e38edf-8417-5370-95a0-9cbb8c7f171a"
 Printf = "de0858da-6303-5e67-8744-51eddeeeb8d7"
-Statistics = "10745b16-79ce-11e8-11f9-7d13ad32a3b2"
 StatsBase = "2913bbd2-ae8a-5f71-8c99-4fb6c76f3a91"
 
 [compat]
@@ -194,9 +236,9 @@ StatsBase = "~0.34.2"
 PLUTO_MANIFEST_TOML_CONTENTS = """
 # This file is machine-generated - editing it directly is not advised
 
-julia_version = "1.9.4"
+julia_version = "1.10.0"
 manifest_format = "2.0"
-project_hash = "a1a771073263dcd10b94e5865b017fad22b2eaa6"
+project_hash = "d688b91a690768a015455cb594ec01dbfa362830"
 
 [[deps.AbstractFFTs]]
 deps = ["LinearAlgebra"]
@@ -411,7 +453,7 @@ weakdeps = ["Dates", "LinearAlgebra"]
 [[deps.CompilerSupportLibraries_jll]]
 deps = ["Artifacts", "Libdl"]
 uuid = "e66e0078-7015-5450-92f7-15fbd957f2ae"
-version = "1.0.5+0"
+version = "1.0.5+1"
 
 [[deps.ConstructionBase]]
 deps = ["LinearAlgebra"]
@@ -929,8 +971,13 @@ uuid = "deac9b47-8bc7-5906-a0fe-35ac56dc84c0"
 version = "8.4.0+0"
 
 [[deps.LibGit2]]
-deps = ["Base64", "NetworkOptions", "Printf", "SHA"]
+deps = ["Base64", "LibGit2_jll", "NetworkOptions", "Printf", "SHA"]
 uuid = "76f85450-5226-5b5a-8eaa-529ad045b433"
+
+[[deps.LibGit2_jll]]
+deps = ["Artifacts", "LibSSH2_jll", "Libdl", "MbedTLS_jll"]
+uuid = "e37daf67-58a4-590a-8e99-b0245dd2ffc5"
+version = "1.6.4+0"
 
 [[deps.LibSSH2_jll]]
 deps = ["Artifacts", "Libdl", "MbedTLS_jll"]
@@ -1059,7 +1106,7 @@ version = "0.5.6"
 [[deps.MbedTLS_jll]]
 deps = ["Artifacts", "Libdl"]
 uuid = "c8ffd9c3-330d-5841-b78e-0817d7145fa1"
-version = "2.28.2+0"
+version = "2.28.2+1"
 
 [[deps.Missings]]
 deps = ["DataAPI"]
@@ -1083,7 +1130,7 @@ version = "0.3.4"
 
 [[deps.MozillaCACerts_jll]]
 uuid = "14a3606d-f60d-562e-9121-12d972cd8159"
-version = "2022.10.11"
+version = "2023.1.10"
 
 [[deps.Multisets]]
 git-tree-sha1 = "8d852646862c96e226367ad10c8af56099b4047e"
@@ -1132,7 +1179,7 @@ version = "1.3.5+1"
 [[deps.OpenBLAS_jll]]
 deps = ["Artifacts", "CompilerSupportLibraries_jll", "Libdl"]
 uuid = "4536629a-c528-5b80-bd46-f80d51c5b363"
-version = "0.3.21+4"
+version = "0.3.23+2"
 
 [[deps.OpenEXR]]
 deps = ["Colors", "FileIO", "OpenEXR_jll"]
@@ -1149,7 +1196,7 @@ version = "3.1.4+0"
 [[deps.OpenLibm_jll]]
 deps = ["Artifacts", "Libdl"]
 uuid = "05823500-19ac-5b8b-9628-191a04bc5112"
-version = "0.8.1+0"
+version = "0.8.1+2"
 
 [[deps.OpenSSL_jll]]
 deps = ["Artifacts", "JLLWrappers", "Libdl"]
@@ -1183,7 +1230,7 @@ version = "1.6.2"
 [[deps.PCRE2_jll]]
 deps = ["Artifacts", "Libdl"]
 uuid = "efcefdf7-47ab-520b-bdef-62a2eaa19f15"
-version = "10.42.0+0"
+version = "10.42.0+1"
 
 [[deps.PDMats]]
 deps = ["LinearAlgebra", "SparseArrays", "SuiteSparse"]
@@ -1242,7 +1289,7 @@ version = "0.42.2+0"
 [[deps.Pkg]]
 deps = ["Artifacts", "Dates", "Downloads", "FileWatching", "LibGit2", "Libdl", "Logging", "Markdown", "Printf", "REPL", "Random", "SHA", "Serialization", "TOML", "Tar", "UUIDs", "p7zip_jll"]
 uuid = "44cfe95a-1eb2-52ea-b672-e2afdf69b78f"
-version = "1.9.2"
+version = "1.10.0"
 
 [[deps.PkgVersion]]
 deps = ["Pkg"]
@@ -1342,7 +1389,7 @@ deps = ["InteractiveUtils", "Markdown", "Sockets", "Unicode"]
 uuid = "3fa0cd96-eef1-5676-8a61-b3b8758bbffb"
 
 [[deps.Random]]
-deps = ["SHA", "Serialization"]
+deps = ["SHA"]
 uuid = "9a3f8284-a2c9-5f02-9a11-845980a1fd5c"
 
 [[deps.RangeArrays]]
@@ -1511,6 +1558,7 @@ version = "1.2.0"
 [[deps.SparseArrays]]
 deps = ["Libdl", "LinearAlgebra", "Random", "Serialization", "SuiteSparse_jll"]
 uuid = "2f01184e-e22b-5df5-ae63-d93ebab69eaf"
+version = "1.10.0"
 
 [[deps.SpecialFunctions]]
 deps = ["IrrationalConstants", "LogExpFunctions", "OpenLibm_jll", "OpenSpecFun_jll"]
@@ -1552,7 +1600,7 @@ version = "1.4.2"
 [[deps.Statistics]]
 deps = ["LinearAlgebra", "SparseArrays"]
 uuid = "10745b16-79ce-11e8-11f9-7d13ad32a3b2"
-version = "1.9.0"
+version = "1.10.0"
 
 [[deps.StatsAPI]]
 deps = ["LinearAlgebra"]
@@ -1603,9 +1651,9 @@ deps = ["Libdl", "LinearAlgebra", "Serialization", "SparseArrays"]
 uuid = "4607b0f0-06f3-5cda-b6b1-a6196a1729e9"
 
 [[deps.SuiteSparse_jll]]
-deps = ["Artifacts", "Libdl", "Pkg", "libblastrampoline_jll"]
+deps = ["Artifacts", "Libdl", "libblastrampoline_jll"]
 uuid = "bea87d4a-7f5b-5778-9afe-8cc45184846c"
-version = "5.10.1+6"
+version = "7.2.1+1"
 
 [[deps.TOML]]
 deps = ["Dates"]
@@ -1759,7 +1807,7 @@ version = "1.5.0+0"
 [[deps.Zlib_jll]]
 deps = ["Libdl"]
 uuid = "83775a58-1f1d-513f-b197-d71354ab007a"
-version = "1.2.13+0"
+version = "1.2.13+1"
 
 [[deps.isoband_jll]]
 deps = ["Artifacts", "JLLWrappers", "Libdl", "Pkg"]
@@ -1782,7 +1830,7 @@ version = "0.15.1+0"
 [[deps.libblastrampoline_jll]]
 deps = ["Artifacts", "Libdl"]
 uuid = "8e850b90-86db-534c-a0d3-1478176c7d93"
-version = "5.8.0+0"
+version = "5.8.0+1"
 
 [[deps.libfdk_aac_jll]]
 deps = ["Artifacts", "JLLWrappers", "Libdl", "Pkg"]
@@ -1816,7 +1864,7 @@ version = "1.52.0+1"
 [[deps.p7zip_jll]]
 deps = ["Artifacts", "Libdl"]
 uuid = "3f19e933-33d8-53b3-aaab-bd5110c3b7a0"
-version = "17.4.0+0"
+version = "17.4.0+2"
 
 [[deps.x264_jll]]
 deps = ["Artifacts", "JLLWrappers", "Libdl", "Pkg"]
@@ -1834,6 +1882,9 @@ version = "3.5.0+0"
 # ╔═╡ Cell order:
 # ╠═b3dd68ba-8512-11ee-367a-e5bba69e1e78
 # ╠═dbc1352c-a1e2-4936-8890-b3e5b5bb907b
+# ╠═a328fc2e-4f22-450b-8b91-90ae70b83878
+# ╠═6b19fa68-64ca-43fc-aa0a-66e1542f7a19
+# ╠═dfee6f08-e0c7-4bb5-8032-4d9277c1bcac
 # ╠═a1c16bf8-5cde-46ca-be3e-fe9bdd9d4406
 # ╠═97fce899-bdf2-4afa-9851-7a9ec1ba408b
 # ╠═cf17f699-8703-4fab-ac58-583c0fb65db6
