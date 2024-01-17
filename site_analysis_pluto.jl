@@ -17,10 +17,14 @@ end
 # ╔═╡ dbc1352c-a1e2-4936-8890-b3e5b5bb907b
 begin
 	veg_df = DataFrame(CSV.File("./veg_key.csv"))
-	forest_sites_df = filter("veg_type" => x -> x in [1, 2, 3, 4, 5], veg_df)
+	rename!(veg_df, [:Site_Code, :Site_ID, :Veg_Type])
+	veg_df[!, :Veg_Type] = Symbol.(veg_df[!,:Veg_Type])
+	forest_veg_types = [1:5]
+	forest_sites_df = filter(:Veg_Type => x -> x in [1, 2, 3, 4, 5], veg_df)
 	forest_ids = forest_sites_df[!, 2]
 	versions = [:c05, :c06, :c61]
 	ensembles = 201:210
+	veg_df
 end
 
 # ╔═╡ a328fc2e-4f22-450b-8b91-90ae70b83878
@@ -29,21 +33,42 @@ begin
 	input_dfs = Dict{Symbol, DataFrame}()
 	for v in versions
 		input_dfs[v] = DataFrame(CSV.File(@sprintf("./prep_input_%s/svr.test.ALL.GPP.201.txt", String(v)), header=false))
-		input_dfs[v][!, "id"] = string.(input_dfs[v][:, 1], "_", input_dfs[v][:, 2], "_", input_dfs[v][:, 3])
+		input_dfs[v][!, :ID] = string.(input_dfs[v][:, 1], "_", input_dfs[v][:, 2], "_", input_dfs[v][:, 3])
 		rename!(input_dfs[v], Dict(:Column1 => :Year, :Column2 => :DOY, :Column3 => :Site_ID, :Column4 => :Crossval_ID, :Column5 => :GPP))
+		input_dfs[v] = innerjoin(input_dfs[v], veg_df, on=:Site_ID)
 	end
 	input_dfs[:c05]
 end
 
+# ╔═╡ a654ecfe-9563-437e-83d6-8c9c98363c14
+# Create master input df instead of dict above
+# begin
+# 	input_df = DataFrame()
+# 	for v in versions
+# 		version_df =  DataFrame(CSV.File(@sprintf("./prep_input_%s/svr.test.ALL.GPP.201.txt", String(v)), header=false))
+# 		insertcols!(version_df, 1, :Version => v)
+# 		append!(input_df, version_df)
+# 	end
+# 	rename!(input_df, Dict(:Column1 => :Year, :Column2 => :DOY, :Column3 => :Site_ID, :Column4 => :Crossval_ID, :Column5 => :GPP))
+# 	input_df[!,:ID] = string.(input_df[:,:Year], "_", input_df[:, :DOY], "_", input_df[:,:Site_ID])
+# 	input_df = innerjoin(input_df, veg_df, on=:Site_ID)
+	
+# 	input_df
+# end
+
 # ╔═╡ 6b19fa68-64ca-43fc-aa0a-66e1542f7a19
 # Create output DataFrames
+
+# Need to add veg type directly I think
 begin
 	output_dfs = Dict{UInt8, DataFrame}()
 	for ens in ensembles
 		output_file = @sprintf("./CROSSVAL/output_lvmar/CV_%i_ALL_GPP.csv", ens)
 		output_dfs[ens] = DataFrame(CSV.File(output_file, header=false))
-		output_dfs[ens][!, "id"] = string.(output_dfs[ens][:, 3], "_", output_dfs[ens][:, 4], "_", output_dfs[ens][:, 5])
-		rename!(output_dfs[ens], Dict(:Column1 => :GPP, :Column3 => :Year, :Column4 => :DOY, :Column5 => :Site_ID, :Column6 => :Crossval_ID))
+		output_dfs[ens][!, :ID] = string.(output_dfs[ens][:, 3], "_", output_dfs[ens][:, 4], "_", output_dfs[ens][:, 5])
+		rename!(output_dfs[ens], Dict(:Column1=>:GPP, :Column3=>:Year, :Column4=>:DOY, :Column5=>:Site_ID, :Column6=>:Crossval_ID))
+		output_dfs[ens] = innerjoin(output_dfs[ens], veg_df, on=:Site_ID)
+		insertcols!(output_dfs[ens], 1, :Ensemble=>ens)
 	end
 	output_dfs[201]
 end
@@ -51,19 +76,31 @@ end
 # ╔═╡ dfee6f08-e0c7-4bb5-8032-4d9277c1bcac
 # Filter input and output DataFrames and create inputs for regression
 begin
-	y_os = Dict{UInt8, Vector{Float32}}()
-	y_is = Dict{Symbol, Vector{Float32}}()
+	# y_outs = Dict{UInt8, Vector{Float32}}()
+	y_outs = DataFrame()
+	y_ins = Dict{Symbol, Vector{Float32}}()
+	
+	# filter missing rows
 	for ens in ensembles
 		for v in versions
-			filter!("id" => x -> x in output_dfs[ens][!, "id"], input_dfs[v])
-			filter!("id" => x -> x in input_dfs[v][!, "id"], output_dfs[ens])
+			# subset!(output_dfs[ens], :Ensemble, :GPP, :Veg_Type, :ID => x -> x in input_dfs[v][!, :ID])
+			# filter!(:ID => x -> x in output_dfs[ens][!, :ID], input_dfs[v])
+			filter!(:ID => x -> x in input_dfs[v][!, :ID], output_dfs[ens])
 		end
-		y_os[ens] = output_dfs[ens][:, 1]
+		# y_os[ens] = output_dfs[ens][:, 1]
 	end
 
 	for v in versions
-		y_is[v] = input_dfs[v][:, 5]
+		y_is[v] = input_dfs[v][:, :GPP]
 	end
+	y_outs
+end
+
+# ╔═╡ d9e7b710-57d0-49e6-8ab2-c6ac9db475b0
+begin
+	all = vec(collect(Iterators.product(y_is, y_os)))
+	println(typeof(all))
+	all
 end
 
 # ╔═╡ a1c16bf8-5cde-46ca-be3e-fe9bdd9d4406
@@ -1883,8 +1920,10 @@ version = "3.5.0+0"
 # ╠═b3dd68ba-8512-11ee-367a-e5bba69e1e78
 # ╠═dbc1352c-a1e2-4936-8890-b3e5b5bb907b
 # ╠═a328fc2e-4f22-450b-8b91-90ae70b83878
+# ╠═a654ecfe-9563-437e-83d6-8c9c98363c14
 # ╠═6b19fa68-64ca-43fc-aa0a-66e1542f7a19
 # ╠═dfee6f08-e0c7-4bb5-8032-4d9277c1bcac
+# ╠═d9e7b710-57d0-49e6-8ab2-c6ac9db475b0
 # ╠═a1c16bf8-5cde-46ca-be3e-fe9bdd9d4406
 # ╠═97fce899-bdf2-4afa-9851-7a9ec1ba408b
 # ╠═cf17f699-8703-4fab-ac58-583c0fb65db6
