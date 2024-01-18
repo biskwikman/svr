@@ -8,6 +8,7 @@ using InteractiveUtils
 begin
 	using CSV
 	using DataFrames
+	using DataFramesMeta
 	using CairoMakie
 	using GLM
 	using Printf
@@ -15,6 +16,7 @@ begin
 end
 
 # ╔═╡ dbc1352c-a1e2-4936-8890-b3e5b5bb907b
+# Global variables and veg type key
 begin
 	veg_df = DataFrame(CSV.File("./veg_key.csv"))
 	rename!(veg_df, [:Site_Code, :Site_ID, :Veg_Type])
@@ -28,33 +30,35 @@ begin
 end
 
 # ╔═╡ a328fc2e-4f22-450b-8b91-90ae70b83878
-# Create input DataFrames
-begin
-	input_dfs = Dict{Symbol, DataFrame}()
-	for v in versions
-		input_dfs[v] = DataFrame(CSV.File(@sprintf("./prep_input_%s/svr.test.ALL.GPP.201.txt", String(v)), header=false))
-		input_dfs[v][!, :ID] = string.(input_dfs[v][:, 1], "_", input_dfs[v][:, 2], "_", input_dfs[v][:, 3])
-		rename!(input_dfs[v], Dict(:Column1 => :Year, :Column2 => :DOY, :Column3 => :Site_ID, :Column4 => :Crossval_ID, :Column5 => :GPP))
-		input_dfs[v] = innerjoin(input_dfs[v], veg_df, on=:Site_ID)
-	end
-	input_dfs[:c05]
-end
+# Create Dict of input DataFrames
+# begin
+# 	input_dfs = Dict{Symbol, DataFrame}()
+# 	for v in versions
+# 		input_dfs[v] = DataFrame(CSV.File(@sprintf("./prep_input_%s/svr.test.ALL.GPP.201.txt", String(v)), header=false))
+# 		input_dfs[v][!, :ID] = string.(input_dfs[v][:, 1], "_", input_dfs[v][:, 2], "_", input_dfs[v][:, 3])
+# 		rename!(input_dfs[v], Dict(:Column1 => :Year, :Column2 => :DOY, :Column3 => :Site_ID, :Column4 => :Crossval_ID, :Column5 => :GPP))
+# 		input_dfs[v] = innerjoin(input_dfs[v], veg_df, on=:Site_ID)
+# 	end
+# 	input_dfs
+# end
 
 # ╔═╡ a654ecfe-9563-437e-83d6-8c9c98363c14
-# Create master input df instead of dict above
-# begin
-# 	input_df = DataFrame()
-# 	for v in versions
-# 		version_df =  DataFrame(CSV.File(@sprintf("./prep_input_%s/svr.test.ALL.GPP.201.txt", String(v)), header=false))
-# 		insertcols!(version_df, 1, :Version => v)
-# 		append!(input_df, version_df)
-# 	end
-# 	rename!(input_df, Dict(:Column1 => :Year, :Column2 => :DOY, :Column3 => :Site_ID, :Column4 => :Crossval_ID, :Column5 => :GPP))
-# 	input_df[!,:ID] = string.(input_df[:,:Year], "_", input_df[:, :DOY], "_", input_df[:,:Site_ID])
-# 	input_df = innerjoin(input_df, veg_df, on=:Site_ID)
+# Create grouped input df instead of dict above
+begin
+	input_df = DataFrame()
+	for v in versions
+		version_df = DataFrame(CSV.File(@sprintf("./prep_input_%s/svr.test.ALL.GPP.201.txt", String(v)), header=false))
+		insertcols!(version_df, 1, :Version => v)
+		append!(input_df, version_df)
+	end
+	rename!(input_df, Dict(:Column1 => :Year, :Column2 => :DOY, :Column3 => :Site_ID, :Column4 => :Crossval_ID, :Column5 => :GPP))
+	input_df[!,:ID] = string.(input_df[:,:Year], "_", input_df[:, :DOY], "_", input_df[:,:Site_ID])
+	input_df = innerjoin(input_df, veg_df, on=:Site_ID)
+
+	input_gdf = groupby(input_df, :Version)
 	
-# 	input_df
-# end
+	input_gdf
+end
 
 # ╔═╡ 6b19fa68-64ca-43fc-aa0a-66e1542f7a19
 # Create output DataFrames
@@ -73,11 +77,17 @@ begin
 	output_dfs[201]
 end
 
+# ╔═╡ 626eb079-5f89-4348-b459-795a1d656e36
+# My new attempt to filter efficiently
+begin
+	test = output_dfs[201][!, :ID]
+	@subset(input_gdf, :ID .∉ [test])
+end
+
 # ╔═╡ dfee6f08-e0c7-4bb5-8032-4d9277c1bcac
 # Filter input and output DataFrames and create inputs for regression
 begin
-	# y_outs = Dict{UInt8, Vector{Float32}}()
-	y_outs = DataFrame()
+	y_outs = Dict{UInt8, Vector{Float32}}()
 	y_ins = Dict{Symbol, Vector{Float32}}()
 	
 	# filter missing rows
@@ -257,6 +267,7 @@ PLUTO_PROJECT_TOML_CONTENTS = """
 CSV = "336ed68f-0bac-5ca0-87d4-7b16caf5d00b"
 CairoMakie = "13f3f980-e62b-5c42-98c6-ff1f3baf88f0"
 DataFrames = "a93c6f00-e57d-5684-b7b6-d8193f3e46c0"
+DataFramesMeta = "1313f7d8-7da2-5740-9ea0-a2ca25f37964"
 GLM = "38e38edf-8417-5370-95a0-9cbb8c7f171a"
 Printf = "de0858da-6303-5e67-8744-51eddeeeb8d7"
 StatsBase = "2913bbd2-ae8a-5f71-8c99-4fb6c76f3a91"
@@ -265,6 +276,7 @@ StatsBase = "2913bbd2-ae8a-5f71-8c99-4fb6c76f3a91"
 CSV = "~0.10.11"
 CairoMakie = "~0.10.12"
 DataFrames = "~1.6.1"
+DataFramesMeta = "~0.14.1"
 GLM = "~1.9.0"
 StatsBase = "~0.34.2"
 """
@@ -275,7 +287,7 @@ PLUTO_MANIFEST_TOML_CONTENTS = """
 
 julia_version = "1.10.0"
 manifest_format = "2.0"
-project_hash = "d688b91a690768a015455cb594ec01dbfa362830"
+project_hash = "ff3f9365c19773a8ef225d8d175c13b865d76b0a"
 
 [[deps.AbstractFFTs]]
 deps = ["LinearAlgebra"]
@@ -420,6 +432,11 @@ git-tree-sha1 = "f641eb0a4f00c343bbc32346e1217b86f3ce9dad"
 uuid = "49dc2e85-a5d0-5ad3-a950-438e2897f1b9"
 version = "0.5.1"
 
+[[deps.Chain]]
+git-tree-sha1 = "8c4920235f6c561e401dfe569beb8b924adad003"
+uuid = "8be319e6-bccf-4806-a6f7-6fae938471bc"
+version = "0.5.0"
+
 [[deps.ChainRulesCore]]
 deps = ["Compat", "LinearAlgebra"]
 git-tree-sha1 = "e0af648f0692ec1691b5d094b8724ba1346281cf"
@@ -523,6 +540,12 @@ deps = ["Compat", "DataAPI", "DataStructures", "Future", "InlineStrings", "Inver
 git-tree-sha1 = "04c738083f29f86e62c8afc341f0967d8717bdb8"
 uuid = "a93c6f00-e57d-5684-b7b6-d8193f3e46c0"
 version = "1.6.1"
+
+[[deps.DataFramesMeta]]
+deps = ["Chain", "DataFrames", "MacroTools", "OrderedCollections", "Reexport"]
+git-tree-sha1 = "6970958074cd09727b9200685b8631b034c0eb16"
+uuid = "1313f7d8-7da2-5740-9ea0-a2ca25f37964"
+version = "0.14.1"
 
 [[deps.DataStructures]]
 deps = ["Compat", "InteractiveUtils", "OrderedCollections"]
@@ -1922,6 +1945,7 @@ version = "3.5.0+0"
 # ╠═a328fc2e-4f22-450b-8b91-90ae70b83878
 # ╠═a654ecfe-9563-437e-83d6-8c9c98363c14
 # ╠═6b19fa68-64ca-43fc-aa0a-66e1542f7a19
+# ╠═626eb079-5f89-4348-b459-795a1d656e36
 # ╠═dfee6f08-e0c7-4bb5-8032-4d9277c1bcac
 # ╠═d9e7b710-57d0-49e6-8ab2-c6ac9db475b0
 # ╠═a1c16bf8-5cde-46ca-be3e-fe9bdd9d4406
