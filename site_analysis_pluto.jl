@@ -1,5 +1,5 @@
 ### A Pluto.jl notebook ###
-# v0.19.36
+# v0.19.38
 
 using Markdown
 using InteractiveUtils
@@ -19,27 +19,14 @@ end
 # Global variables and veg type key
 begin
 	veg_df = DataFrame(CSV.File("./veg_key.csv"))
-	rename!(veg_df, [:Site_Code, :Site_ID, :Veg_Type])
-	# veg_df[!, :Veg_Type] = Symbol.(veg_df[!,:Veg_Type])
+	igbp_df = DataFrame(CSV.File("./igbp.csv"))
+	rename!(veg_df, [:Site_Code, :Site_ID, :Veg_Type_Code])
 	forest_veg_types = [1:5]
-	forest_sites_df = filter(:Veg_Type => x -> x in [1, 2, 3, 4, 5], veg_df)
+	forest_sites_df = filter(:Veg_Type_Code => x -> x in [1, 2, 3, 4, 5], veg_df)
 	forest_ids = forest_sites_df[!, 2]
 	versions = [:c05, :c06, :c61]
-	ensembles = 201:210
+	ensembles = 201:210; nothing
 end
-
-# ╔═╡ a328fc2e-4f22-450b-8b91-90ae70b83878
-# Create Dict of input DataFrames
-# begin
-# 	input_dfs = Dict{Symbol, DataFrame}()
-# 	for v in versions
-# 		input_dfs[v] = DataFrame(CSV.File(@sprintf("./prep_input_%s/svr.test.ALL.GPP.201.txt", String(v)), header=false))
-# 		input_dfs[v][!, :ID] = string.(input_dfs[v][:, 1], "_", input_dfs[v][:, 2], "_", input_dfs[v][:, 3])
-# 		rename!(input_dfs[v], Dict(:Column1 => :Year, :Column2 => :DOY, :Column3 => :Site_ID, :Column4 => :Crossval_ID, :Column5 => :GPP))
-# 		input_dfs[v] = innerjoin(input_dfs[v], veg_df, on=:Site_ID)
-# 	end
-# 	input_dfs
-# end
 
 # ╔═╡ a654ecfe-9563-437e-83d6-8c9c98363c14
 # Create grouped input df instead of dict above
@@ -54,28 +41,8 @@ begin
 	rename!(input_df, Dict(:Column1 => :Year, :Column2 => :DOY, :Column3 => :Site_ID, :Column4 => :Crossval_ID, :Column5 => :Input_GPP))
 	input_df[!,:Key] = string.(input_df[:,:Year], "_", input_df[:, :DOY], "_", input_df[:,:Site_ID])
 	input_df = innerjoin(input_df, veg_df, on=:Site_ID)
-
-	# input_gdf = groupby(input_df, :Version)
+	input_df; nothing
 end
-
-# ╔═╡ 6b19fa68-64ca-43fc-aa0a-66e1542f7a19
-# Create output DataFrames
-
-# Need to add veg type directly I think
-# begin
-# 	# output_dfs = Dict{UInt8, DataFrame}()
-# 	output_dfs = []
-# 	for (i, ens) in enumerate(ensembles)
-# 		output_file = @sprintf("./CROSSVAL/output_lvmar/CV_%i_ALL_GPP.csv", ens)
-# 		ensemble_df = DataFrame(CSV.File(output_file, header=false))
-# 		append!(output_dfs, [ensemble_df])
-# 		output_dfs[i][!, :Key] = string.(output_dfs[i][:, 3], "_", output_dfs[i][:, 4], "_", output_dfs[i][:, 5])
-# 		rename!(output_dfs[i], Dict(:Column1=>:GPP, :Column3=>:Year, :Column4=>:DOY, :Column5=>:Site_ID, :Column6=>:Crossval_ID))
-# 		output_dfs[i] = innerjoin(output_dfs[i], veg_df, on=:Site_ID)
-# 		insertcols!(output_dfs[i], 1, :Ensemble => ens)
-# 	end
-# 	output_dfs[1]
-# end
 
 # ╔═╡ 90f09075-9c22-4e1a-9c1a-6d4d475cbd0a
 # New output df
@@ -93,85 +60,151 @@ begin
 	end
 	rename!(output_df, Dict(:Column1=>:GPP, :Column3=>:Year, :Column4=>:DOY, :Column5=>:Site_ID, :Column6=>:Crossval_ID))
 	output_df[!, :Key] = string.(output_df[:, :Year], "_", output_df[:, :DOY], "_", output_df[:, :Site_ID])
-	output_df
+	output_df; nothing
 end
 
 # ╔═╡ dfee6f08-e0c7-4bb5-8032-4d9277c1bcac
+# Create master dataframe
 begin
-	# input_gpps_dfs = select(input_gdf, :Version, :Year, :DOY, :GPP => :Input_GPP, :Key, :Veg_Type)
-	# output_gpps_df = DataFrame(
-	# 	Key = output_dfs[1].Key,
-	# 	GPP_201 = output_dfs[1].GPP,
-	# 	GPP_202 = output_dfs[2].GPP,
-	# 	GPP_203 = output_dfs[3].GPP,
-	# 	GPP_204 = output_dfs[4].GPP,
-	# 	GPP_205 = output_dfs[5].GPP,
-	# 	GPP_206 = output_dfs[6].GPP,
-	# 	GPP_207 = output_dfs[7].GPP,
-	# 	GPP_208 = output_dfs[8].GPP,
-	# 	GPP_209 = output_dfs[9].GPP,
-	# 	GPP_210 = output_dfs[10].GPP,
-	# )
-
-	mdf = innerjoin(select(output_df, :Ensemble, :GPP, :Key, :Version), input_df, on = [:Key, :Version])
-	gmdf = groupby(mdf, :Version)
-	
-
-	# mdf = innerjoin(output_gpps_df, input_gpps_dfs, on = :Key)
-
-	# mdf = groupby(mdf, :Version)
-	# transform!(mdf, (:Veg_Type => (x -> x ∈ [1:5]) => :Forest), AsTable(Between("GPP_201", "GPP_210")) => mean => :Ensemble_Mean, ungroup=false)
-	# select!(mdf, :Version, :Key, :Year, :DOY, :Veg_Type, :Forest, :Input_GPP, :, ungroup=false)
+	mdf = innerjoin(select(output_df, :Ensemble=> (x -> string.(x)) => :Ensemble, :GPP, :Key, :Version), input_df, on = [:Key, :Version])
+	means = @chain mdf begin
+		groupby(Cols("Version", "Key"))
+		combine(:GPP => mean, :Input_GPP => unique, :Veg_Type_Code => unique, :Year => unique, :DOY => unique, :Site_ID => unique, :Crossval_ID => unique, :Site_Code => unique, renamecols=false)
+		insertcols!(1, :Ensemble => "Ensemble Mean")
+	end
+	append!(mdf, means)
+	transform!(mdf, :Veg_Type_Code => (x -> x .∈ [1:5]) => :Forest)
+	mdf
 end
 
 # ╔═╡ 36705360-2d5e-4663-bb5e-012cf73fd4b0
+# Create statistics df
 begin
 	stats_df = DataFrame()
 
-	for ens in ensembles
-		ensemble_df = combine(subset(gmdf, :Ensemble => x -> x .== ens, ungroup=false), 
-			[:Input_GPP, :GPP] => ((x, Y) -> cor(x, Y)^2) => :R2
+	stats_df = @chain mdf begin
+		groupby(Cols(:Version, :Ensemble))
+		combine(
+			[:Input_GPP, :GPP] => ((x, Y) -> cor(x, Y)^2) => :R2,
+			[:Input_GPP, :GPP] => ((x, Y) -> rmsd(x, Y)) => :RMSD,
 		)
-		
-		insertcols!(ensemble_df, 2, :Ensemble => string(ens))
-		append!(stats_df, ensemble_df, cols=:union)
+		select(:, :Ensemble => (x -> string.(x)) => :Ensemble)
+		groupby(:Version)
+		@subset(:R2 .== maximum(:R2))
+		sort!(:Version)
 	end
-	sort!(stats_df, :Version)
-	stats_df
 
-	# stats_df = combine(mdf, 
-	# 	[:Input_GPP, :GPP_201] => ((x, Y) -> cor(x, Y)^2) => "201",
-	# 	[:Input_GPP, :GPP_202] => ((x, Y) -> cor(x, Y)^2) => "202",
-	# 	[:Input_GPP, :GPP_203] => ((x, Y) -> cor(x, Y)^2) => "203",
-	# 	[:Input_GPP, :GPP_204] => ((x, Y) -> cor(x, Y)^2) => "204",
-	# 	[:Input_GPP, :GPP_205] => ((x, Y) -> cor(x, Y)^2) => "205",
-	# 	[:Input_GPP, :GPP_206] => ((x, Y) -> cor(x, Y)^2) => "206",
-	# 	[:Input_GPP, :GPP_207] => ((x, Y) -> cor(x, Y)^2) => "207",
-	# 	[:Input_GPP, :GPP_208] => ((x, Y) -> cor(x, Y)^2) => "208",
-	# 	[:Input_GPP, :GPP_209] => ((x, Y) -> cor(x, Y)^2) => "209",
-	# 	[:Input_GPP, :GPP_210] => ((x, Y) -> cor(x, Y)^2) => "210",
-	# 	[:Input_GPP, :Ensemble_Mean] => ((x, Y) -> cor(x, Y)^2) => "Ensemble Mean"
-	# )
+	veg_type_stats_df = @chain mdf begin
+		groupby(Cols(:Version, :Ensemble, :Veg_Type_Code))
+		combine(
+			[:Input_GPP, :GPP] => ((x, Y) -> cor(x, Y)^2) => :R2,
+			[:Input_GPP, :GPP] => ((x, Y) -> rmsd(x, Y)) => :RMSD,
+		)
+		leftjoin!(igbp_df, on = :Veg_Type_Code)
+		groupby(Cols(:Version, :Veg_Type))
+		@subset(:R2 .== maximum(:R2))
+		sort([:Version, order(:R2, rev=true)])
+	end
 
-	# stack(stats_df, Between("201", "Ensemble Mean"), :Version, variable_name=:Ensemble, value_name=:R2)
-	
-	# combine(mdf,
-	# 	[:Input_GPP, :GPP_201] => ((x, Y) -> rmsd(x, Y)) => "rm201",
-	# 	[:Input_GPP, :GPP_202] => ((x, Y) -> rmsd(x, Y)) => "rm202",
-	# 	[:Input_GPP, :GPP_203] => ((x, Y) -> rmsd(x, Y)) => "rm203",
-	# 	[:Input_GPP, :GPP_204] => ((x, Y) -> rmsd(x, Y)) => "rm204",
-	# 	[:Input_GPP, :GPP_205] => ((x, Y) -> rmsd(x, Y)) => "rm205",
-	# 	[:Input_GPP, :GPP_206] => ((x, Y) -> rmsd(x, Y)) => "rm206",
-	# 	[:Input_GPP, :GPP_207] => ((x, Y) -> rmsd(x, Y)) => "rm207",
-	# 	[:Input_GPP, :GPP_208] => ((x, Y) -> rmsd(x, Y)) => "rm208",
-	# 	[:Input_GPP, :GPP_209] => ((x, Y) -> rmsd(x, Y)) => "rm209",
-	# 	[:Input_GPP, :GPP_210] => ((x, Y) -> rmsd(x, Y)) => "rm210",
-	# )
+	forest_stats_df = @chain mdf begin
+		groupby(Cols(:Version, :Ensemble, :Forest))
+		combine(
+			[:Input_GPP, :GPP] => ((x, Y) -> cor(x, Y)^2) => :R2,
+			[:Input_GPP, :GPP] => ((x, Y) -> rmsd(x, Y)) => :RMSD,
+		)
+		groupby(Cols(:Version, :Forest))
+		@subset(:R2 .== maximum(:R2))
+		sort(Cols(:Forest, :Version))
+	end
+
+	println(stats_df)
 end
+
+# ╔═╡ 97fce899-bdf2-4afa-9851-7a9ec1ba408b
+begin
+	c05_lm_df = @subset(mdf, :Version .== Symbol("c05"), :Ensemble .== "Ensemble Mean")
+	c06_lm_df = @subset(mdf, :Version .== Symbol("c06"), :Ensemble .== "209")
+	c61_lm_df = @subset(mdf, :Version .== Symbol("c61"), :Ensemble .== "209")
+	select!(c05_lm_df, :Input_GPP => :x, :GPP => :Y)
+	select!(c06_lm_df, :Input_GPP => :x, :GPP => :Y)
+	select!(c61_lm_df, :Input_GPP => :x, :GPP => :Y)
+	c05_ols = lm(@formula(Y ~ x), c05_lm_df)
+	c06_ols = lm(@formula(Y ~ x), c06_lm_df)
+	c61_ols = lm(@formula(Y ~ x), c61_lm_df)
+	olss = (c05 = c05_ols, c06 = c06_ols, c61 = c61_ols)
+
+	# ols = lm(@formula(Y ~ x), lm_df)
+	
+	# forest_df = DataFrame(x = y_i_forest, Y = y_o_forest)
+	# ols_forest = lm(@formula(Y ~ x), forest_df)
+	
+	# nonforest_df = DataFrame(x = y_i_nonforest, Y = y_o_nonforest)
+	# ols_nonforest = lm(@formula(Y ~ x), nonforest_df)
+end
+
+# ╔═╡ cf17f699-8703-4fab-ac58-583c0fb65db6
+begin
+	axislabelsize = 32
+	ticklabelsize = 32
+	f = Figure(backgroundcolor = RGBf(0.98, 0.98, 0.98), resolution = (2000, 700))
+	for (i, df) in enumerate([c05_lm_df, c06_lm_df, c61_lm_df])
+		if i == 1
+			yticklabelsvisible=true
+			ylabelvisible=true
+		else 
+			yticklabelsvisible=false
+			ylabelvisible=false
+		end
+		
+		ax = Axis(f[1, i], title=String(versions[i]),
+			titlesize=32,
+			xlabel=rich("Obs GPP (gC m",superscript("-2"),"day",superscript("-1"),")"),
+			ylabel=rich("SVR GPP (gC m",superscript("-2"),"day",superscript("-1"),")"),
+			ylabelvisible=ylabelvisible,
+			limits=(0, 18, 0, 18),
+			aspect=DataAspect(),
+			ylabelsize=axislabelsize,
+			xlabelsize=axislabelsize,
+			xticklabelsize=ticklabelsize,
+			yticklabelsize=ticklabelsize,
+			yticklabelsvisible=yticklabelsvisible,
+		)
+	
+		scatter!(ax, df.x, df.Y; markersize=4)
+		lines!(ax, df.x, predict(olss[i]), color="red")
+	
+		texts = [
+				rich("y = $(round(coef(olss[i])[2], digits = 2))x + $(round(coef(olss[i])[1], digits = 2))"),
+				rich("r", superscript("2"), " = $(round(r2(olss[i]), digits = 2))"),
+				rich("RMSE = $(round(rmsd(df.Y, df.x), digits=2))"),
+				rich("n = $(length(df.Y))"), 
+		]
+		
+		for (i, text) in enumerate(texts)
+			text!(
+				ax, 0, 1, 
+				text=text,
+				align=(:left, :top),
+				offset = (4, (i-1)*-30),
+				space=:relative,
+				fontsize=30,
+			)
+		end
+	end
+	f
+end
+
+# ╔═╡ 2d8753b7-b58b-4532-827e-cc03b00f04f1
+html"""<style>
+main {
+    max-width: 60%;
+    margin-left: 50px;
+}
+"""
 
 # ╔═╡ a1c16bf8-5cde-46ca-be3e-fe9bdd9d4406
 begin
-	site_stats_df = DataFrame(version=Symbol[], ensemble=String[], veg_type=Symbol[], r_squared=Float32[], RMSE=Float32[])
+	# site_stats_df = DataFrame(version=Symbol[], ensemble=String[], veg_type=Symbol[], r_squared=Float32[], RMSE=Float32[])
 	# site_stats_forest_df = DataFrame(ensemble=String[], r_squared=Float32[], RMSE=Float32[])
 	# site_stats_nonforest_df = DataFrame(ensemble=String[], r_squared=Float32[], RMSE=Float32[])
 	
@@ -212,12 +245,12 @@ begin
 		# push!(site_stats_nonforest_df, [string(ens-200), r_squared_nonforest, rmse_nonforest])
 	# end
 
-	y_o_mean = mean(values(y_os))
+	# y_o_mean = mean(values(y_os))
 
-	for v in versions
-		push!(site_stats_df, [v, "Ensemble Mean", :All, cor(y_o_mean, y_is[v])^2, rmsd(y_o_mean, y_is[v])])
-	end
-	site_stats_df
+	# for v in versions
+	# 	push!(site_stats_df, [v, "Ensemble Mean", :All, cor(y_o_mean, y_is[v])^2, rmsd(y_o_mean, y_is[v])])
+	# end
+	# site_stats_df
 
 	# Ensemble 9 performs the best so it is used here
 	# y_o = gpps[9]
@@ -234,88 +267,6 @@ begin
 	# push!(site_stats_nonforest_df, ["Ensemble Mean", y_o_nonforest_cor, y_o_nonforest_rmsd])
 	# site_stats_df
 end
-
-# ╔═╡ 97fce899-bdf2-4afa-9851-7a9ec1ba408b
-begin
-df = DataFrame(x = y_i, Y = y_o)
-ols = lm(@formula(Y ~ x), df)
-
-forest_df = DataFrame(x = y_i_forest, Y = y_o_forest)
-ols_forest = lm(@formula(Y ~ x), forest_df)
-
-nonforest_df = DataFrame(x = y_i_nonforest, Y = y_o_nonforest)
-ols_nonforest = lm(@formula(Y ~ x), nonforest_df)
-end
-
-# ╔═╡ cf17f699-8703-4fab-ac58-583c0fb65db6
-begin
-	f = Figure(backgroundcolor = RGBf(0.98, 0.98, 0.98), resolution = (600, 1200))
-	ax1 = Axis(f[1, 1], title="All sites GPP", 
-		# xlabel=rich("Obs GPP (gC m",superscript("-2"),"day",superscript("-1"),")"),
-		# ylabel=rich("SVR GPP (gC m",superscript("-2"),"day",superscript("-1"),")"),
-		limits=(0, 18, 0, 18)
-	)
-	scatter!(ax1, y_i, y_o; markersize=3)
-	lines!(ax1, y_i, predict(ols), color="red")
-	text!(
-		ax1, 0, 1, 
-		text=
-			rich("y = $(round(coef(ols)[2], digits = 2))x + $(round(coef(ols)[1], digits = 2)) \n" *
-			"r", superscript("2"), " = $(round(r2(ols), digits = 2)) \n" *
-			"RMSE = $(round(y_o_rmsd, digits=2)) \n" *
-			"n = $(length(y_o))"), 
-		align=(:left, :top),
-		offset = (4, -2),
-		space=:relative,
-	)
-
-	ax2 = Axis(f[2, 1], title="Forest sites GPP", 
-		# xlabel=rich("Obs GPP (gC m",superscript("-2"),"day",superscript("-1"),")"),
-		# ylabel=rich("SVR GPP (gC m",superscript("-2"),"day",superscript("-1"),")"),
-		limits=(0, 18, 0, 18)
-	)
-	scatter!(ax2, y_i_forest, y_o_forest; markersize=3)
-	lines!(ax2, y_i_forest, predict(ols_forest), color="red")
-	text!(
-		ax2, 0, 1, 
-		text=
-			rich("y = $(round(coef(ols_forest)[2], digits = 2))x + $(round(coef(ols_forest)[1], digits = 2)) \n" *
-			"r", superscript("2"), " = $(round(r2(ols_forest), digits = 2)) \n" *
-			"RMSE = $(round(y_o_forest_rmsd, digits=2)) \n" *
-			"n = $(length(y_o_forest))"), 
-		align=(:left, :top),
-		offset = (4, -2),
-		space=:relative,
-	)
-
-	ax3 = Axis(f[3, 1], title="Non-forest sites GPP", 
-		xlabel=rich("Obs GPP (gC m",superscript("-2"),"day",superscript("-1"),")"),
-		ylabel=rich("SVR GPP (gC m",superscript("-2"),"day",superscript("-1"),")"),
-		limits=(0, 18, 0, 18)
-	)
-	scatter!(ax3, y_i_nonforest, y_o_nonforest; markersize=3)
-	lines!(ax3, y_i_nonforest, predict(ols_nonforest), color="red")
-	text!(
-		ax3, 0, 1, 
-		text=
-			rich("y = $(round(coef(ols_nonforest)[2], digits = 2))x + $(round(coef(ols_nonforest)[1], digits = 2)) \n" *
-			"r", superscript("2"), " = $(round(r2(ols_nonforest), digits = 2)) \n" *
-			"RMSE = $(round(y_o_nonforest_rmsd, digits=2)) \n" *
-			"n = $(length(y_o_nonforest))"), 
-		align=(:left, :top),
-		offset = (4, -2),
-		space=:relative,
-	)
-	f
-end
-
-# ╔═╡ 2d8753b7-b58b-4532-827e-cc03b00f04f1
-html"""<style>
-main {
-    max-width: 60%;
-    margin-left: 50px;
-}
-"""
 
 # ╔═╡ 00000000-0000-0000-0000-000000000001
 PLUTO_PROJECT_TOML_CONTENTS = """
@@ -2011,15 +1962,13 @@ version = "3.5.0+0"
 # ╔═╡ Cell order:
 # ╠═b3dd68ba-8512-11ee-367a-e5bba69e1e78
 # ╠═dbc1352c-a1e2-4936-8890-b3e5b5bb907b
-# ╠═a328fc2e-4f22-450b-8b91-90ae70b83878
 # ╠═a654ecfe-9563-437e-83d6-8c9c98363c14
-# ╠═6b19fa68-64ca-43fc-aa0a-66e1542f7a19
 # ╠═90f09075-9c22-4e1a-9c1a-6d4d475cbd0a
 # ╠═dfee6f08-e0c7-4bb5-8032-4d9277c1bcac
 # ╠═36705360-2d5e-4663-bb5e-012cf73fd4b0
-# ╠═a1c16bf8-5cde-46ca-be3e-fe9bdd9d4406
 # ╠═97fce899-bdf2-4afa-9851-7a9ec1ba408b
 # ╠═cf17f699-8703-4fab-ac58-583c0fb65db6
 # ╠═2d8753b7-b58b-4532-827e-cc03b00f04f1
+# ╠═a1c16bf8-5cde-46ca-be3e-fe9bdd9d4406
 # ╟─00000000-0000-0000-0000-000000000001
 # ╟─00000000-0000-0000-0000-000000000002
