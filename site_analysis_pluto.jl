@@ -1,5 +1,5 @@
 ### A Pluto.jl notebook ###
-# v0.19.38
+# v0.19.41
 
 using Markdown
 using InteractiveUtils
@@ -144,9 +144,10 @@ end
 
 # ╔═╡ cf17f699-8703-4fab-ac58-583c0fb65db6
 begin
-	axislabelsize = 32
-	ticklabelsize = 32
+	axislabelsize = 45
+	ticklabelsize = 50
 	f = Figure(backgroundcolor = RGBf(0.98, 0.98, 0.98), resolution = (2000, 700))
+	titles = [:V05, :V06, :V61]
 	for (i, df) in enumerate([c05_lm_df, c06_lm_df, c61_lm_df])
 		if i == 1
 			yticklabelsvisible=true
@@ -156,10 +157,12 @@ begin
 			ylabelvisible=false
 		end
 		
-		ax = Axis(f[1, i], title=String(versions[i]),
-			titlesize=32,
-			xlabel=rich("Obs GPP (gC m",superscript("-2"),"day",superscript("-1"),")"),
-			ylabel=rich("SVR GPP (gC m",superscript("-2"),"day",superscript("-1"),")"),
+		ax = Axis(f[1, i], title=String(titles[i]),
+			titlesize=45,
+			# xlabel=rich("Obs GPP (gC m",superscript("-2"),"day",superscript("-1"),")"),
+			xlabel=L"Obs\; GPP\; (gC m^{-2}day^{-1})",
+			# ylabel=rich("SVR GPP (gC m",superscript("-2"),"day",superscript("-1"),")"),
+			ylabel=L"SVR\; GPP\; (gC m^{-2}day{-1})",
 			ylabelvisible=ylabelvisible,
 			limits=(0, 18, 0, 18),
 			aspect=DataAspect(),
@@ -170,14 +173,14 @@ begin
 			yticklabelsvisible=yticklabelsvisible,
 		)
 	
-		scatter!(ax, df.x, df.Y; markersize=4)
-		lines!(ax, df.x, predict(olss[i]), color="red")
+		scatter!(ax, df.x, df.Y; markersize=6, alpha=0.3)
+		lines!(ax, df.x, predict(olss[i]), color="black", linewidth=5)
 	
 		texts = [
-				rich("y = $(round(coef(olss[i])[2], digits = 2))x + $(round(coef(olss[i])[1], digits = 2))"),
+				# rich("y = $(round(coef(olss[i])[2], digits = 2))x + $(round(coef(olss[i])[1], digits = 2))"),
 				rich("r", superscript("2"), " = $(round(r2(olss[i]), digits = 2))"),
 				rich("RMSE = $(round(rmsd(df.Y, df.x), digits=2))"),
-				rich("n = $(length(df.Y))"), 
+				# rich("n = $(length(df.Y))"), 
 		]
 		
 		for (i, text) in enumerate(texts)
@@ -185,9 +188,9 @@ begin
 				ax, 0, 1, 
 				text=text,
 				align=(:left, :top),
-				offset = (4, (i-1)*-30),
+				offset = (4, (i-1)*-50),
 				space=:relative,
-				fontsize=30,
+				fontsize=45,
 			)
 		end
 	end
@@ -292,7 +295,7 @@ StatsBase = "~0.34.2"
 PLUTO_MANIFEST_TOML_CONTENTS = """
 # This file is machine-generated - editing it directly is not advised
 
-julia_version = "1.10.0"
+julia_version = "1.10.3"
 manifest_format = "2.0"
 project_hash = "ff3f9365c19773a8ef225d8d175c13b865d76b0a"
 
@@ -518,7 +521,7 @@ weakdeps = ["Dates", "LinearAlgebra"]
 [[deps.CompilerSupportLibraries_jll]]
 deps = ["Artifacts", "Libdl"]
 uuid = "e66e0078-7015-5450-92f7-15fbd957f2ae"
-version = "1.0.5+1"
+version = "1.1.1+0"
 
 [[deps.ConstructionBase]]
 deps = ["LinearAlgebra"]
@@ -1254,7 +1257,7 @@ version = "1.3.5+1"
 [[deps.OpenBLAS_jll]]
 deps = ["Artifacts", "CompilerSupportLibraries_jll", "Libdl"]
 uuid = "4536629a-c528-5b80-bd46-f80d51c5b363"
-version = "0.3.23+2"
+version = "0.3.23+4"
 
 [[deps.OpenEXR]]
 deps = ["Colors", "FileIO", "OpenEXR_jll"]

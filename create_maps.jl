@@ -17,8 +17,8 @@ begin
 	mean_array_c5 = Array{Float32, 2}(undef, 480, 360)
 	mean_array_c6 = Array{Float32, 2}(undef, 480, 360)
 	read!("./out_c61/YEAR_cor/GPP.ALL.AVERAGE.flt", mean_array)
-	read!("./out_c5/YEAR_cor/GPP.ALL.AVERAGE.flt", mean_array_c5)
-	read!("./out_c6/YEAR_cor/GPP.ALL.AVERAGE.flt", mean_array_c6)
+	read!("./out_c05/YEAR_cor/GPP.ALL.ALL.AVERAGE.flt", mean_array_c5)
+	read!("./out_c06/YEAR_cor/GPP.ALL.AVERAGE.flt", mean_array_c6)
 	mean_array = convert(Array{Union{Missing, Float32}}, mean_array)
 	mean_array_c5 = convert(Array{Union{Missing, Float32}}, mean_array_c5)
 	mean_array_c6 = convert(Array{Union{Missing, Float32}}, mean_array_c6)
@@ -121,7 +121,7 @@ CairoMakie = "~0.10.12"
 PLUTO_MANIFEST_TOML_CONTENTS = """
 # This file is machine-generated - editing it directly is not advised
 
-julia_version = "1.10.0"
+julia_version = "1.10.1"
 manifest_format = "2.0"
 project_hash = "2fe8dd770e7bc3036b8558711cc38a86f1c8e0b2"
 
@@ -348,7 +348,7 @@ weakdeps = ["Dates", "LinearAlgebra"]
 [[deps.CompilerSupportLibraries_jll]]
 deps = ["Artifacts", "Libdl"]
 uuid = "e66e0078-7015-5450-92f7-15fbd957f2ae"
-version = "1.0.5+1"
+version = "1.1.0+0"
 
 [[deps.ConstructionBase]]
 deps = ["LinearAlgebra"]
@@ -1056,7 +1056,7 @@ version = "1.3.5+1"
 [[deps.OpenBLAS_jll]]
 deps = ["Artifacts", "CompilerSupportLibraries_jll", "Libdl"]
 uuid = "4536629a-c528-5b80-bd46-f80d51c5b363"
-version = "0.3.23+2"
+version = "0.3.23+4"
 
 [[deps.OpenEXR]]
 deps = ["Colors", "FileIO", "OpenEXR_jll"]

@@ -228,7 +228,7 @@ begin
 	TheilSenRegressor = @load TheilSenRegressor pkg=MLJScikitLearnInterface
 	ts_regr = TheilSenRegressor()
 	chart_order_pres = ["GPP"]
-	f_pres = Figure(backgroundcolor = RGBf(0.90, 0.90, 0.90), resolution = (1600, 800))
+	f_pres = Figure(resolution = (1600, 800))
 	ga_pres = f_pres[1, 1] = GridLayout()
 	gl_pres = f_pres[0, :] = GridLayout()
 	grids_pres = [ga_pres]
@@ -244,7 +244,7 @@ begin
 		if dataset == "LST_Day"
 			ylabel = L"°C"
 		elseif dataset == "GPP"
-			ylabel = L"KgC\; m^2\; year^{-1}"
+			ylabel = L"kgC\; m^2\; year^{-1}"
 		end
 		
 		ax = Axis(
@@ -254,9 +254,9 @@ begin
 			xticklabelsize=ticklabelsize, yticklabelsize=ticklabelsize, xlabelsize=ticklabelsize, ylabelsize=ticklabelsize, titlesize=axistitlesize,
 		)
 
-		lines!(ax, range(2000,2015), chart_data[dataset]["005"] .- mean005, label="v05μ", linewidth=linewidth, color=(colormap[1], 0.5))
-		lines!(ax, years, chart_data[dataset]["006"] .- mean006, label="v06μ", linewidth=linewidth, color=(colormap[2], 0.5))
-		lines!(ax, years, chart_data[dataset]["061"] .- mean061, label="v61μ", linewidth=linewidth, color=(colormap[3], 0.5))
+		lines!(ax, range(2000,2015), chart_data[dataset]["005"] .- mean005, linewidth=linewidth, color=(colormap[1], 0.5))
+		lines!(ax, years, chart_data[dataset]["006"] .- mean006, linewidth=linewidth, color=(colormap[2], 0.5))
+		lines!(ax, years, chart_data[dataset]["061"] .- mean061, linewidth=linewidth, color=(colormap[3], 0.5))
 
 		df = DataFrame(
 			years = convert.(Float32, years),
@@ -286,9 +286,9 @@ begin
 		fit!(ts_machine_61, verbosity=0)
 		regr61 = predict_mode(ts_machine_61)
 
-		lines!(ax, df.years, round.(regr05, digits=5), label="v05 lm", linewidth=reglinewidth, linestyle=:dash, color=colormap[1])
-		lines!(ax, df.years, round.(regr06, digits=5), label="v06 lm", linewidth=reglinewidth, linestyle=:dash, color=colormap[2])
-		lines!(ax, df.years, round.(regr61, digits=5), label="v61 lm", linewidth=reglinewidth, linestyle=:dash, color=colormap[3])
+		lines!(ax, df.years, round.(regr05, digits=5), label="v5", linewidth=reglinewidth, linestyle=:dash, color=colormap[1])
+		lines!(ax, df.years, round.(regr06, digits=5), label="v6", linewidth=reglinewidth, linestyle=:dash, color=colormap[2])
+		lines!(ax, df.years, round.(regr61, digits=5), label="v6.1", linewidth=reglinewidth, linestyle=:dash, color=colormap[3])
 
 		row = ceil(i / 2)
 		row = convert(Int, row)
@@ -297,12 +297,15 @@ begin
 
 		v05_p = string(round(mk_original_test(df05.v05).p, digits=3))
 		v05_τ = string(round(mk_original_test(df05.v05).τ, digits=2))
+		println(mk_original_test(df05.v05))
 		v05_test = LineElement(linewidth=2, linestyle=:dash, color=(colormap[1]))
 		v06_p = string(round(mk_original_test(df.v06).p, digits=3))
 		v06_τ = string(round(mk_original_test(df.v06).τ, digits=2))
+		println(mk_original_test(df.v06))
 		v06_test = LineElement(linewidth=2, linestyle=:dash, color=(colormap[2]))
 		v61_p = string(round(mk_original_test(df.v61).p, digits=3))
 		v61_τ = string(round(mk_original_test(df.v61).τ, digits=2))
+		println(mk_original_test(df.v61))
 		v61_test = LineElement(linewidth=2, linestyle=:dash, color=(colormap[3]))
 
 		Legend(f_pres[i,2][1,1],
@@ -372,7 +375,7 @@ StatsBase = "~0.34.2"
 PLUTO_MANIFEST_TOML_CONTENTS = """
 # This file is machine-generated - editing it directly is not advised
 
-julia_version = "1.10.0"
+julia_version = "1.10.1"
 manifest_format = "2.0"
 project_hash = "f584daebabe8d59cbdf74b6c47d621d62c75c045"
 
@@ -659,7 +662,7 @@ weakdeps = ["Dates", "LinearAlgebra"]
 [[deps.CompilerSupportLibraries_jll]]
 deps = ["Artifacts", "Libdl"]
 uuid = "e66e0078-7015-5450-92f7-15fbd957f2ae"
-version = "1.0.5+1"
+version = "1.1.0+0"
 
 [[deps.CompositionsBase]]
 git-tree-sha1 = "802bb88cd69dfd1509f6670416bd4434015693ad"
@@ -1696,7 +1699,7 @@ version = "1.3.5+1"
 [[deps.OpenBLAS_jll]]
 deps = ["Artifacts", "CompilerSupportLibraries_jll", "Libdl"]
 uuid = "4536629a-c528-5b80-bd46-f80d51c5b363"
-version = "0.3.23+2"
+version = "0.3.23+4"
 
 [[deps.OpenEXR]]
 deps = ["Colors", "FileIO", "OpenEXR_jll"]
