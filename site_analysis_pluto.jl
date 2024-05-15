@@ -29,7 +29,7 @@ begin
 end
 
 # ╔═╡ a654ecfe-9563-437e-83d6-8c9c98363c14
-# Create grouped input df instead of dict above
+# Create grouped input df
 begin
 	input_df = DataFrame()
 	for v in versions
@@ -41,7 +41,8 @@ begin
 	rename!(input_df, Dict(:Column1 => :Year, :Column2 => :DOY, :Column3 => :Site_ID, :Column4 => :Crossval_ID, :Column5 => :Input_GPP))
 	input_df[!,:Key] = string.(input_df[:,:Year], "_", input_df[:, :DOY], "_", input_df[:,:Site_ID])
 	input_df = innerjoin(input_df, veg_df, on=:Site_ID)
-	input_df; nothing
+	input_df
+	nothing
 end
 
 # ╔═╡ 90f09075-9c22-4e1a-9c1a-6d4d475cbd0a
@@ -60,7 +61,8 @@ begin
 	end
 	rename!(output_df, Dict(:Column1=>:GPP, :Column3=>:Year, :Column4=>:DOY, :Column5=>:Site_ID, :Column6=>:Crossval_ID))
 	output_df[!, :Key] = string.(output_df[:, :Year], "_", output_df[:, :DOY], "_", output_df[:, :Site_ID])
-	output_df; nothing
+	output_df
+	nothing
 end
 
 # ╔═╡ dfee6f08-e0c7-4bb5-8032-4d9277c1bcac
@@ -204,72 +206,6 @@ main {
     margin-left: 50px;
 }
 """
-
-# ╔═╡ a1c16bf8-5cde-46ca-be3e-fe9bdd9d4406
-begin
-	# site_stats_df = DataFrame(version=Symbol[], ensemble=String[], veg_type=Symbol[], r_squared=Float32[], RMSE=Float32[])
-	# site_stats_forest_df = DataFrame(ensemble=String[], r_squared=Float32[], RMSE=Float32[])
-	# site_stats_nonforest_df = DataFrame(ensemble=String[], r_squared=Float32[], RMSE=Float32[])
-	
-	# y_i = []
-	# y_i_forest = []
-	# y_i_nonforest = []
-		
-	# for ens in ensembles
-		# global y_i = input_df[:,5]
-		# global y_o = output_df[:,1]
-
-		# forest_in_df = filter("Column3" => x -> x in forest_ids, input_df)
-		# forest_out_df = filter("Column5" => x -> x in forest_ids, output_df)
-		# global y_i_forest = forest_in_df[:,5]
-		# global y_o_forest = forest_out_df[:,1]
-
-		# nonforest_in_df = filter("Column3" => x -> x ∉ forest_ids, input_df)
-		# nonforest_out_df = filter("Column5" => x -> x ∉ forest_ids, output_df)
-		# global y_i_nonforest = nonforest_in_df[:,5]
-		# global y_o_nonforest = nonforest_out_df[:,1]
-		# for v in versions
-		# 	r_squared = cor(y_os[ens], y_is[v])^2
-		# 	rmse = rmsd(y_os[ens], y_is[v])
-		# 	push!(site_stats_df, [v, string(ens-200), :All, r_squared, rmse])
-		# end
-		# r_squared = cor(y_o, y_i)^2
-		# rmse = rmsd(y_o, y_i)
-		# r_squared_forest = cor(y_o_forest, y_i_forest)^2
-		# rmse_forest = rmsd(y_o_forest, y_i_forest)
-		# r_squared_nonforest = cor(y_o_nonforest, y_i_nonforest)^2
-		# rmse_nonforest = rmsd(y_o_nonforest, y_i_nonforest)
-
-		# push!(gpps, y_o)
-		# push!(site_stats_df, [string(ens-200), r_squared, rmse])
-		# push!(gpps_forest, y_o_forest)
-		# push!(site_stats_forest_df, [string(ens-200), r_squared_forest, rmse_forest])
-		# push!(gpps_nonforest, y_o_nonforest)
-		# push!(site_stats_nonforest_df, [string(ens-200), r_squared_nonforest, rmse_nonforest])
-	# end
-
-	# y_o_mean = mean(values(y_os))
-
-	# for v in versions
-	# 	push!(site_stats_df, [v, "Ensemble Mean", :All, cor(y_o_mean, y_is[v])^2, rmsd(y_o_mean, y_is[v])])
-	# end
-	# site_stats_df
-
-	# Ensemble 9 performs the best so it is used here
-	# y_o = gpps[9]
-	# y_o_forest = gpps_forest[9]
-	# y_o_nonforest = gpps_nonforest[9]
-	# y_o_cor = cor(y_o, y_i)^2
-	# y_o_forest_cor = cor(y_o_forest, y_i_forest)^2
-	# y_o_nonforest_cor = cor(y_o_nonforest, y_i_nonforest)^2
-	# y_o_rmsd = rmsd(y_o, y_i)
-	# y_o_forest_rmsd = rmsd(y_o_forest, y_i_forest)
-	# y_o_nonforest_rmsd = rmsd(y_o_nonforest, y_i_nonforest)
-	# push!(site_stats_df, ["Ensemble Mean", y_o_cor, y_o_rmsd])
-	# push!(site_stats_forest_df, ["Ensemble Mean", y_o_forest_cor, y_o_forest_rmsd])
-	# push!(site_stats_nonforest_df, ["Ensemble Mean", y_o_nonforest_cor, y_o_nonforest_rmsd])
-	# site_stats_df
-end
 
 # ╔═╡ 00000000-0000-0000-0000-000000000001
 PLUTO_PROJECT_TOML_CONTENTS = """
@@ -1972,6 +1908,5 @@ version = "3.5.0+0"
 # ╠═97fce899-bdf2-4afa-9851-7a9ec1ba408b
 # ╠═cf17f699-8703-4fab-ac58-583c0fb65db6
 # ╠═2d8753b7-b58b-4532-827e-cc03b00f04f1
-# ╠═a1c16bf8-5cde-46ca-be3e-fe9bdd9d4406
 # ╟─00000000-0000-0000-0000-000000000001
 # ╟─00000000-0000-0000-0000-000000000002
