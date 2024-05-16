@@ -11,6 +11,9 @@ begin
 	using Statistics
 end
 
+# ╔═╡ d91c0472-15ae-48ff-92b4-35cda205b773
+Threads.nthreads()
+
 # ╔═╡ ca07dd67-64b9-4842-93dc-727fd66cfdb8
 colormap = :delta
 
@@ -38,7 +41,7 @@ begin
 	max_mag = sqrt(trend_max * trend_max)
 	min_mag < max_mag ? range_max = max_mag : range_max = min_mag
 	range_min = range_max * -1
-	nothing
+	maximum(skipmissing(trend_array[:,:,3]))
 end
 
 # ╔═╡ 8cf4aae7-4471-4108-83cf-7e192c7e6b5e
@@ -1753,6 +1756,7 @@ version = "3.5.0+0"
 """
 
 # ╔═╡ Cell order:
+# ╠═d91c0472-15ae-48ff-92b4-35cda205b773
 # ╠═8cf4aae7-4471-4108-83cf-7e192c7e6b5e
 # ╠═ca07dd67-64b9-4842-93dc-727fd66cfdb8
 # ╠═8ef4242c-398c-4cd8-bbf9-d992caf68ded
