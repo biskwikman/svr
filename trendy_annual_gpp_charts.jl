@@ -4,124 +4,92 @@
 using Markdown
 using InteractiveUtils
 
-# ╔═╡ ad542e2e-cba9-11ee-1617-ed02db50a0fe
+# ╔═╡ 8b3d72d8-137e-11ef-3ad4-01bbddb651b1
 begin
-	using CairoMakie
 	using JLD2
+	using CairoMakie
 	using Statistics
 end
 
-# ╔═╡ ca07dd67-64b9-4842-93dc-727fd66cfdb8
-colormap = :delta
-
-# ╔═╡ 924d9f59-95ae-4514-8a1d-78319618e24a
-dataset = "gpp"
-
-# ╔═╡ 85e90138-4c75-49cc-85bb-99748102ecc9
+# ╔═╡ 8e2feea6-e0e7-4d46-bee9-5209846761de
 begin
-	function load_trend_array()
-		f = jldopen("./Annual_GPP_Trend.jld2")
-		trend_array = f[dataset]
-		trend_array = convert(Array{Union{Missing, Float32}}, trend_array)
-		replace!(trend_array, -9999.0 => missing)
-		return trend_array
+	years = 2000:2020
+	ticklabelsize=45
+	colorbarlabelsize=45
+	titlesize=45
+end
+
+# ╔═╡ ca41c058-9feb-4650-a871-3f5a82979c0b
+# SVR DATA
+begin
+	# svr_ave = Array{Union{Missing, Float32}}(undef, (480, 360, 21))
+	svr_ave::Array{Float32} = []
+	for (i, year) in enumerate(years)
+		yearly_ave = Array{Float32}(undef, (480, 360))
+		read!("./out_c61/YEAR_cor/GPP.ALL.209.$year.flt", yearly_ave)
+		yearly_ave = convert(Array{Union{Missing, Float32}}, yearly_ave)
+		replace!(yearly_ave, -9999.0 => missing)
+		push!(svr_ave, mean(skipmissing(yearly_ave)))
 	end
-	trend_array = load_trend_array()
-	# nothing
+	svr_ave
 end
 
-# ╔═╡ 8ef4242c-398c-4cd8-bbf9-d992caf68ded
+# ╔═╡ 6c350803-d9f5-495f-8731-0c7c9b86bf8a
 begin
-	trend_min = minimum(skipmissing(trend_array))
-	trend_max = maximum(skipmissing(trend_array))
-	min_mag = sqrt(trend_min * trend_min)
-	max_mag = sqrt(trend_max * trend_max)
-	min_mag < max_mag ? range_max = max_mag : range_max = min_mag
-	range_min = range_max * -1
-	maximum(skipmissing(trend_array[:,:,3]))
+	models = [
+		"cable_pop",
+		"classic",
+		"clm50",
+		"e3sm",
+		"edv3",
+		"ibis",
+		"isba_ctrip",
+		"jsbach",
+		"jules",
+		"lpj_guess",
+		"lpjml",
+		"lpjwsl",
+		"lpx_bern",
+		"ocn",
+		"orchidee",
+		"sdgvm",
+		"visit",
+	]
 end
 
-# ╔═╡ 8cf4aae7-4471-4108-83cf-7e192c7e6b5e
+# ╔═╡ 9e8e936e-da5d-42df-b1e6-31b7d967ec52
+# TRENDY DATA
 begin
-	function create_maps(trend_array)
-		
-
-		# dataset ∉ ("lst_day", "lst_night") ? colormap_label = L"%$(uppercase(dataset))\; year^{-1}" : colormap_label = L"°C\; year^{-1}"
-		# colormap_label = rich("GPP kgC m",superscript("-2"),"year",superscript("-1")," ")
-		colormap_label = L"kgC\; m^2\; year^{-1}"
-		
-		fig = Figure(size = (1800, 1200))
-		ticklabelsize=45
-		colorbarlabelsize=45
-		titlesize=45
-		colspacing=Relative(0.08)
-	
-		ax1 = Axis(fig[1,1],
-			title="v05: 2000-2015",
-			xtickformat = x -> string.(Int.(x)) .* "°",
-			ytickformat = y -> string.(Int.(y)) .* "°",
-			xticklabelsize=ticklabelsize,
-			yticklabelsize=ticklabelsize,
-			titlesize=titlesize,
-			aspect=DataAspect(),
-		)
-		
-		ax2 = Axis(fig[1,2],
-			title="v06: 2000-2020",
-			xtickformat = x -> string.(Int.(x)) .* "°",
-			ytickformat = y -> string.(Int.(y)) .* "°",
-			xticklabelsize=ticklabelsize,
-			yticklabelsvisible=false,
-			yticksvisible=true,
-			titlesize=titlesize,
-			aspect=DataAspect(),
-		)
-		
-		ax3 = Axis(fig[2,1],
-			title="v6.1: 2000-2020",
-			xtickformat = x -> string.(Int.(x)) .* "°",
-			ytickformat = y -> string.(Int.(y)) .* "°",
-			xticklabelsize=ticklabelsize,
-			yticklabelsize=ticklabelsize,
-			titlesize=titlesize,
-			aspect=DataAspect(),
-		)
-	
-		hm1 = heatmap!(ax1, 60:180, 10:80, trend_array[:,:,1]; colorrange=(range_min, range_max), colormap=colormap)
-		hm2 = heatmap!(ax2, 60:180, 10:80, trend_array[:,:,2], colorrange=(range_min, range_max), colormap=colormap)
-		hm3 = heatmap!(ax3, 60:180, 10:80, trend_array[:,:,3], colorrange=(range_min, range_max), colormap=colormap)
-
-		digits = 3
-		
-		Colorbar(
-			fig[2,2], hm1, tellwidth=false, tellheight=false, halign=:left,
-			ticklabelsize=ticklabelsize, label=colormap_label, labelsize=colorbarlabelsize,
-			ticks=[
-				round(range_min, digits=digits, RoundUp),
-				round(range_min/2, digits=digits),
-				0,
-				round(range_max/2, digits=digits),
-				round(range_max, digits=digits, RoundDown),
-			],
-			width=50,
-		)
-		
-		Label(fig[0,:], replace(uppercase(dataset), "_"=>" ", "DAY"=>"Day", "NIGHT"=>"Night") * " Estimation: Interannual Trend", fontsize=50)
-		colgap!(fig.layout, 1, colspacing)
-		resize_to_layout!(fig)
-		return fig
+	f = jldopen("./trendy_gpp_annual_mean.jld2")
+	models_aves = Dict()
+	for model in models
+		model_annual_ave::Array{Float32} = []
+		for year in 1:21
+			push!(model_annual_ave, mean(skipmissing(f[model][:,:,year])))
+			models_aves[model] = model_annual_ave
+		end
 	end
-	create_maps(trend_array)
 end
 
-# ╔═╡ 1f787995-301f-4672-a821-643b8c757cf1
-html"""<style>
-main {
-    max-width: 75%;
-    margin-left: 1%;
-    margin-right: 2% !important;
-}
-"""
+# ╔═╡ 2362b78a-0069-44ec-8505-8933adcb42f1
+begin
+	fig = Figure(size = (800, 800))
+
+	ax = Axis(
+		fig[1,1],
+		# aspect=DataAspect(),
+		titlesize=titlesize,
+	)
+
+	for data in models_aves
+		model_name = data[1]
+		model_aves = data[2]
+	
+		lines!(ax, years, model_aves)
+		lines!(ax, years, svr_ave, linewidth=5)
+	end
+	fig
+end
 
 # ╔═╡ 00000000-0000-0000-0000-000000000001
 PLUTO_PROJECT_TOML_CONTENTS = """
@@ -131,8 +99,8 @@ JLD2 = "033835bb-8acc-5ee8-8aae-3f567f8a3819"
 Statistics = "10745b16-79ce-11e8-11f9-7d13ad32a3b2"
 
 [compat]
-CairoMakie = "~0.11.8"
-JLD2 = "~0.4.45"
+CairoMakie = "~0.11.10"
+JLD2 = "~0.4.46"
 """
 
 # ╔═╡ 00000000-0000-0000-0000-000000000002
@@ -141,7 +109,7 @@ PLUTO_MANIFEST_TOML_CONTENTS = """
 
 julia_version = "1.10.3"
 manifest_format = "2.0"
-project_hash = "3f69acbf7cfd514b8a0c8f230303bef5f5db5a89"
+project_hash = "428ce7dad6bd0a6575b0bac03590ec92e88ac780"
 
 [[deps.AbstractFFTs]]
 deps = ["LinearAlgebra"]
@@ -249,18 +217,12 @@ uuid = "6e34b625-4abd-537c-b88f-471c36dfa7a0"
 version = "1.0.8+1"
 
 [[deps.CEnum]]
-git-tree-sha1 = "eb4cb44a499229b3b8426dcfb5dd85333951ff90"
+git-tree-sha1 = "389ad5c84de1ae7cf0e28e381131c98ea87d54fc"
 uuid = "fa961155-64e5-5f13-b03f-caf6b980ea82"
-version = "0.4.2"
+version = "0.5.0"
 
 [[deps.CRC32c]]
 uuid = "8bf52ea8-c179-5cab-976a-9e18b702a9bc"
-
-[[deps.CRlibm]]
-deps = ["CRlibm_jll"]
-git-tree-sha1 = "32abd86e3c2025db5172aa182b982debed519834"
-uuid = "96374032-68de-5a5b-8d9e-752f78720389"
-version = "1.0.1"
 
 [[deps.CRlibm_jll]]
 deps = ["Artifacts", "JLLWrappers", "Libdl", "Pkg"]
@@ -276,9 +238,9 @@ version = "1.0.5"
 
 [[deps.CairoMakie]]
 deps = ["CRC32c", "Cairo", "Colors", "FFTW", "FileIO", "FreeType", "GeometryBasics", "LinearAlgebra", "Makie", "PrecompileTools"]
-git-tree-sha1 = "a80d49ed3333f5f78df8ffe76d07e88cc35e9172"
+git-tree-sha1 = "e64af6bea1f0dcde6ebecc581768074f992ad39b"
 uuid = "13f3f980-e62b-5c42-98c6-ff1f3baf88f0"
-version = "0.11.8"
+version = "0.11.10"
 
 [[deps.Cairo_jll]]
 deps = ["Artifacts", "Bzip2_jll", "CompilerSupportLibraries_jll", "Fontconfig_jll", "FreeType2_jll", "Glib_jll", "JLLWrappers", "LZO_jll", "Libdl", "Pixman_jll", "Xorg_libXext_jll", "Xorg_libXrender_jll", "Zlib_jll", "libpng_jll"]
@@ -560,11 +522,10 @@ git-tree-sha1 = "db16beca600632c95fc8aca29890d83788dd8b23"
 uuid = "a3f928ae-7b40-5064-980b-68af3947d34b"
 version = "2.13.96+0"
 
-[[deps.Formatting]]
-deps = ["Logging", "Printf"]
-git-tree-sha1 = "fb409abab2caf118986fc597ba84b50cbaf00b87"
-uuid = "59287772-0a20-5a39-b81b-1366585eb4c0"
-version = "0.4.3"
+[[deps.Format]]
+git-tree-sha1 = "9c68794ef81b08086aeb32eeaf33531668d5f5fc"
+uuid = "1fa38f19-a742-5d3f-a2b9-30dd87b9d5f8"
+version = "1.3.7"
 
 [[deps.ForwardDiff]]
 deps = ["CommonSubexpressions", "DiffResults", "DiffRules", "LinearAlgebra", "LogExpFunctions", "NaNMath", "Preferences", "Printf", "Random", "SpecialFunctions"]
@@ -737,14 +698,15 @@ version = "0.15.1"
     Unitful = "1986cc42-f94f-5a68-af5c-568840ba703d"
 
 [[deps.IntervalArithmetic]]
-deps = ["CRlibm", "RoundingEmulator"]
-git-tree-sha1 = "c274ec586ea58eb7b42afd0c5d67e50ff50229b5"
+deps = ["CRlibm_jll", "MacroTools", "RoundingEmulator"]
+git-tree-sha1 = "23ddd329f4a2a65c7a55b91553b60849bd038575"
 uuid = "d1acc4aa-44c8-5952-acd4-ba5d80a2a253"
-version = "0.22.5"
-weakdeps = ["DiffRules", "RecipesBase"]
+version = "0.22.11"
+weakdeps = ["DiffRules", "ForwardDiff", "RecipesBase"]
 
     [deps.IntervalArithmetic.extensions]
     IntervalArithmeticDiffRulesExt = "DiffRules"
+    IntervalArithmeticForwardDiffExt = "ForwardDiff"
     IntervalArithmeticRecipesBaseExt = "RecipesBase"
 
 [[deps.IntervalSets]]
@@ -781,9 +743,9 @@ version = "1.0.0"
 
 [[deps.JLD2]]
 deps = ["FileIO", "MacroTools", "Mmap", "OrderedCollections", "Pkg", "PrecompileTools", "Printf", "Reexport", "Requires", "TranscodingStreams", "UUIDs"]
-git-tree-sha1 = "7c0008f0b7622c6c0ee5c65cbc667b69f8a65672"
+git-tree-sha1 = "5ea6acdd53a51d897672edb694e3cc2912f3f8a7"
 uuid = "033835bb-8acc-5ee8-8aae-3f567f8a3819"
-version = "0.4.45"
+version = "0.4.46"
 
 [[deps.JLLWrappers]]
 deps = ["Artifacts", "Preferences"]
@@ -964,10 +926,10 @@ uuid = "1914dd2f-81c6-5fcd-8719-6d5c9610ff09"
 version = "0.5.13"
 
 [[deps.Makie]]
-deps = ["Animations", "Base64", "CRC32c", "ColorBrewer", "ColorSchemes", "ColorTypes", "Colors", "Contour", "DelaunayTriangulation", "Distributions", "DocStringExtensions", "Downloads", "FFMPEG_jll", "FileIO", "FilePaths", "FixedPointNumbers", "Formatting", "FreeType", "FreeTypeAbstraction", "GeometryBasics", "GridLayoutBase", "ImageIO", "InteractiveUtils", "IntervalArithmetic", "IntervalSets", "Isoband", "KernelDensity", "LaTeXStrings", "LinearAlgebra", "MacroTools", "MakieCore", "Markdown", "MathTeXEngine", "Observables", "OffsetArrays", "Packing", "PlotUtils", "PolygonOps", "PrecompileTools", "Printf", "REPL", "Random", "RelocatableFolders", "Scratch", "ShaderAbstractions", "Showoff", "SignedDistanceFields", "SparseArrays", "StableHashTraits", "Statistics", "StatsBase", "StatsFuns", "StructArrays", "TriplotBase", "UnicodeFun"]
-git-tree-sha1 = "40c5dfbb99c91835171536cd571fe6f1ba18ff97"
+deps = ["Animations", "Base64", "CRC32c", "ColorBrewer", "ColorSchemes", "ColorTypes", "Colors", "Contour", "DelaunayTriangulation", "Distributions", "DocStringExtensions", "Downloads", "FFMPEG_jll", "FileIO", "FilePaths", "FixedPointNumbers", "Format", "FreeType", "FreeTypeAbstraction", "GeometryBasics", "GridLayoutBase", "ImageIO", "InteractiveUtils", "IntervalSets", "Isoband", "KernelDensity", "LaTeXStrings", "LinearAlgebra", "MacroTools", "MakieCore", "Markdown", "MathTeXEngine", "Observables", "OffsetArrays", "Packing", "PlotUtils", "PolygonOps", "PrecompileTools", "Printf", "REPL", "Random", "RelocatableFolders", "Scratch", "ShaderAbstractions", "Showoff", "SignedDistanceFields", "SparseArrays", "Statistics", "StatsBase", "StatsFuns", "StructArrays", "TriplotBase", "UnicodeFun"]
+git-tree-sha1 = "46ca613be7a1358fb93529726ea2fc28050d3ae0"
 uuid = "ee78f7c6-11fb-53f2-987a-cfe4a2b5a57a"
-version = "0.20.7"
+version = "0.20.9"
 
 [[deps.MakieCore]]
 deps = ["Observables", "REPL"]
@@ -1175,12 +1137,6 @@ deps = ["Combinatorics", "LinearAlgebra", "Random"]
 git-tree-sha1 = "4ca430561cf37c75964c8478eddae2d79e96ca9b"
 uuid = "2ae35dd2-176d-5d53-8349-f30d82d94d4f"
 version = "0.4.21"
-
-[[deps.PikaParser]]
-deps = ["DocStringExtensions"]
-git-tree-sha1 = "d6ff87de27ff3082131f31a714d25ab6d0a88abf"
-uuid = "3bbf5609-3e7b-44cd-8549-7c69f321e792"
-version = "0.6.1"
 
 [[deps.Pixman_jll]]
 deps = ["Artifacts", "CompilerSupportLibraries_jll", "JLLWrappers", "LLVMOpenMP_jll", "Libdl"]
@@ -1444,12 +1400,6 @@ weakdeps = ["ChainRulesCore"]
     [deps.SpecialFunctions.extensions]
     SpecialFunctionsChainRulesCoreExt = "ChainRulesCore"
 
-[[deps.StableHashTraits]]
-deps = ["Compat", "PikaParser", "SHA", "Tables", "TupleTools"]
-git-tree-sha1 = "10dc702932fe05a0e09b8e5955f00794ea1e8b12"
-uuid = "c5dd0088-6c3f-4803-b00e-f31a60c170fa"
-version = "1.1.8"
-
 [[deps.StackViews]]
 deps = ["OffsetArrays"]
 git-tree-sha1 = "46e589465204cd0c08b4bd97385e4fa79a0c770c"
@@ -1581,11 +1531,6 @@ weakdeps = ["Random", "Test"]
 git-tree-sha1 = "4d4ed7f294cda19382ff7de4c137d24d16adc89b"
 uuid = "981d1d27-644d-49a2-9326-4793e63143c3"
 version = "0.1.0"
-
-[[deps.TupleTools]]
-git-tree-sha1 = "41d61b1c545b06279871ef1a4b5fcb2cac2191cd"
-uuid = "9d95972d-f1c8-5527-a6e0-b4b365fa01f6"
-version = "1.5.0"
 
 [[deps.UUIDs]]
 deps = ["Random", "SHA"]
@@ -1753,12 +1698,11 @@ version = "3.5.0+0"
 """
 
 # ╔═╡ Cell order:
-# ╠═8cf4aae7-4471-4108-83cf-7e192c7e6b5e
-# ╠═ca07dd67-64b9-4842-93dc-727fd66cfdb8
-# ╠═8ef4242c-398c-4cd8-bbf9-d992caf68ded
-# ╠═85e90138-4c75-49cc-85bb-99748102ecc9
-# ╠═ad542e2e-cba9-11ee-1617-ed02db50a0fe
-# ╠═924d9f59-95ae-4514-8a1d-78319618e24a
-# ╠═1f787995-301f-4672-a821-643b8c757cf1
+# ╠═8b3d72d8-137e-11ef-3ad4-01bbddb651b1
+# ╠═2362b78a-0069-44ec-8505-8933adcb42f1
+# ╠═8e2feea6-e0e7-4d46-bee9-5209846761de
+# ╠═ca41c058-9feb-4650-a871-3f5a82979c0b
+# ╠═9e8e936e-da5d-42df-b1e6-31b7d967ec52
+# ╠═6c350803-d9f5-495f-8731-0c7c9b86bf8a
 # ╟─00000000-0000-0000-0000-000000000001
 # ╟─00000000-0000-0000-0000-000000000002
