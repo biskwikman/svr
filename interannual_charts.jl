@@ -19,6 +19,7 @@ begin
 	using Printf
 	using Statistics
 	using CairoMakie
+	using Makie.Colors
 	using Dates
 	using PlutoUI
 	using DataFrames
@@ -50,6 +51,9 @@ begin
 	xticks = 2000:2:2020
 	linestyle = Linestyle([0.5, 1.0, 1.8, 3.0])
 end
+
+# ╔═╡ 34cf21c3-5922-4e65-b538-c4dd4a811585
+
 
 # ╔═╡ 51dbe244-701e-425e-9c9c-752597339240
 function get_sample_data()
@@ -248,13 +252,21 @@ begin
 		elseif dataset == "GPP"
 			ylabel = L"kgC\; m^2\; year^{-1}"
 		end
+
+		ylimmax = maximum([maximum(chart_data[dataset]["005"] .- mean005), maximum(chart_data[dataset]["006"] .- mean006), maximum(chart_data[dataset]["061"] .- mean061)])
+		ylimmin = minimum([minimum(chart_data[dataset]["005"] .- mean005), minimum(chart_data[dataset]["006"] .- mean006), minimum(chart_data[dataset]["061"] .- mean061)])
+		ylimmax = ((ylimmax - ylimmin) * 0.1) + ylimmax
+		ylimmin = ylimmin - ((ylimmax - ylimmin) * 0.1)
 		
 		ax = Axis(
 			grids_pres[i][1,1], 
 			title=title, xlabel=xlabel, ylabel=ylabel, xticks=xticks,
 			xtickformat=yearformat,
 			xticklabelsize=ticklabelsize, yticklabelsize=ticklabelsize, xlabelsize=ticklabelsize, ylabelsize=ticklabelsize, titlesize=axistitlesize,
+			limits=(minimum(years)-1, maximum(years)+1, ylimmin, ylimmax),
 		)
+		
+		poly!(ax, Point2f[(0, -100), (2005.0, -100), (2005.0, 100), (0, 100)], color=RGBA(0.1, 0.1, 0.1, 0.1))
 
 		lines!(ax, range(2000,2015), chart_data[dataset]["005"] .- mean005, linewidth=linewidth, color=(colormap[1], 0.5))
 		lines!(ax, years, chart_data[dataset]["006"] .- mean006, linewidth=linewidth, color=(colormap[2], 0.5))
@@ -303,15 +315,15 @@ begin
 		v05_p = string(round(mk_original_test(df05.v05).p, digits=3))
 		v05_τ = string(round(mk_original_test(df05.v05).τ, digits=2))
 		println(mk_original_test(df05.v05))
-		v05_test = LineElement(linewidth=2, linestyle=:dash, color=(colormap[1]))
+		v05_test = LineElement(linewidth=reglinewidth, linestyle=:dash, color=(colormap[1]))
 		v06_p = string(round(mk_original_test(df.v06).p, digits=3))
 		v06_τ = string(round(mk_original_test(df.v06).τ, digits=2))
 		println(mk_original_test(df.v06))
-		v06_test = LineElement(linewidth=2, linestyle=:dash, color=(colormap[2]))
+		v06_test = LineElement(linewidth=reglinewidth, linestyle=:dash, color=(colormap[2]))
 		v61_p = string(round(mk_original_test(df.v61).p, digits=3))
 		v61_τ = string(round(mk_original_test(df.v61).τ, digits=2))
 		println(mk_original_test(df.v61))
-		v61_test = LineElement(linewidth=2, linestyle=:dash, color=(colormap[3]))
+		v61_test = LineElement(linewidth=reglinewidth, linestyle=:dash, color=(colormap[3]))
 
 		Legend(f_pres[i,2][1,1],
 			[v05_test, v06_test, v61_test],
@@ -356,6 +368,7 @@ DataFrames = "a93c6f00-e57d-5684-b7b6-d8193f3e46c0"
 Dates = "ade2ca70-3891-5945-98fb-dc099432e06a"
 MLJ = "add582a8-e3ab-11e8-2d5e-e98b27df1bc7"
 MLJScikitLearnInterface = "5ae90465-5518-4432-b9d2-8a1def2f0cab"
+Makie = "ee78f7c6-11fb-53f2-987a-cfe4a2b5a57a"
 MannKendall = "1761a1e1-e032-445b-870e-f3b23132a90a"
 PlutoUI = "7f904dfe-b85e-4ff6-b463-dae2292396a8"
 Printf = "de0858da-6303-5e67-8744-51eddeeeb8d7"
@@ -367,6 +380,7 @@ CairoMakie = "~0.11.5"
 DataFrames = "~1.6.1"
 MLJ = "~0.20.2"
 MLJScikitLearnInterface = "~0.6.1"
+Makie = "~0.20.10"
 MannKendall = "~0.1.0"
 PlutoUI = "~0.7.55"
 StatsBase = "~0.34.2"
@@ -378,7 +392,7 @@ PLUTO_MANIFEST_TOML_CONTENTS = """
 
 julia_version = "1.10.3"
 manifest_format = "2.0"
-project_hash = "f584daebabe8d59cbdf74b6c47d621d62c75c045"
+project_hash = "1c5faebcc637d61a592c53dc620025e0bae21206"
 
 [[deps.ARFFFiles]]
 deps = ["CategoricalArrays", "Dates", "Parsers", "Tables"]
@@ -2371,6 +2385,7 @@ version = "3.5.0+0"
 # ╠═90ef6c63-1be1-4095-8012-90bfccaef3e2
 # ╠═15ebd3be-f34d-496e-87d9-fc9af5762b25
 # ╠═bb134d7c-a599-498d-8830-575cb7d8fb0e
+# ╠═34cf21c3-5922-4e65-b538-c4dd4a811585
 # ╠═5a9d0a90-0270-43e9-acf6-a82027cf1ec6
 # ╠═51dbe244-701e-425e-9c9c-752597339240
 # ╠═bb7c9ce3-21ca-4c50-8973-b6b690e7cb0c
