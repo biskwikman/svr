@@ -20,29 +20,82 @@ begin
 	using JLD2
 end
 
-# ╔═╡ 1fe23621-df56-46bc-aa67-9b286ffb7440
+# ╔═╡ 9d4627f5-8008-4de0-818d-5df3cf7d1636
 begin
-	# # SAVE MEAN DATA
-	# jldsave("./trendy_gpp_annual_mean.jld2"; 
-	# 	cable_pop = yearly_ave_arrays["CABLE-POP"], 
-	# 	classic = yearly_ave_arrays["CLASSIC"], 
-	# 	clm50 = yearly_ave_arrays["CLM5.0"],
-	# 	e3sm = yearly_ave_arrays["E3SM"],
-	# 	edv3 = yearly_ave_arrays["EDv3"],
-	# 	ibis = yearly_ave_arrays["IBIS"],
+	# SAVE TREND DATA
+	# jldsave("./trendy_gpp_trend_all_models.jld2"; 
+	# 	cable_pop = trend_arrays["CABLE-POP"], 
+	# 	classic = trend_arrays["CLASSIC"], 
+	# 	clm50 = trend_arrays["CLM5.0"],
+	# 	e3sm = trend_arrays["E3SM"],
+	# 	edv3 = trend_arrays["EDv3"],
+	# 	ibis = trend_arrays["IBIS"],
 	# # 	isam = trend_arrays["ISAM"],
-	# 	isba_ctrip = yearly_ave_arrays["ISBA-CTRIP"],
-	# 	jsbach = yearly_ave_arrays["JSBACH"],
-	# 	jules = yearly_ave_arrays["JULES"],
-	# 	lpj_guess = yearly_ave_arrays["LPJ-GUESS"],
-	# 	lpjml = yearly_ave_arrays["LPJmL"],
-	# 	lpjwsl = yearly_ave_arrays["LPJwsl"],
-	# 	lpx_bern = yearly_ave_arrays["LPX-Bern"],
-	# 	ocn = yearly_ave_arrays["OCN"],
-	# 	orchidee = yearly_ave_arrays["ORCHIDEE"],
-	# 	sdgvm = yearly_ave_arrays["SDGVM"],
-	# 	visit = yearly_ave_arrays["VISIT"],
+	# 	isba_ctrip = trend_arrays["ISBA-CTRIP"],
+	# 	jsbach = trend_arrays["JSBACH"],
+	# 	jules = trend_arrays["JULES"],
+	# 	lpj_guess = trend_arrays["LPJ-GUESS"],
+	# 	lpjml = trend_arrays["LPJmL"],
+	# 	lpjwsl = trend_arrays["LPJwsl"],
+	# 	lpx_bern = trend_arrays["LPX-Bern"],
+	# 	ocn = trend_arrays["OCN"],
+	# 	orchidee = trend_arrays["ORCHIDEE"],
+	# 	sdgvm = trend_arrays["SDGVM"],
+	# 	visit = trend_arrays["VISIT"],
 	# )
+end
+
+# ╔═╡ fa14dba9-0042-412c-a83f-539cf262b99e
+# begin
+	
+# 	colormap_label = L"kgC\; m^2\; year^{-1}"
+# 	ticklabelsize=45
+# 	colorbarlabelsize=45
+# 	titlesize=45
+# 	colspacing=Relative(0.08)
+# 	digits = 3
+	
+# 	fig = Figure(size = (1800, 1200))
+	
+# 	ax1 = Axis(fig[1,1],
+# 		title="v05: 2000-2020",
+# 		xtickformat = x -> string.(Int.(x)) .* "°",
+# 		ytickformat = y -> string.(Int.(y)) .* "°",
+# 		xticklabelsize=ticklabelsize,
+# 		yticklabelsize=ticklabelsize,
+# 		titlesize=titlesize,
+# 		aspect=DataAspect(),
+# 		)
+	
+# 	hm = heatmap!(ax1, 60:180, 10:80, yearly_ave_arrays["CLASSIC"][:,:,15], colorrange=(range_min, range_max), colormap=:delta)
+	
+# 	Colorbar(
+# 		fig[1,2], hm, tellwidth=false, tellheight=false, halign=:center,
+# 		ticklabelsize=ticklabelsize,
+# 		label=colormap_label, 
+# 		labelsize=colorbarlabelsize,
+# 		ticks=[
+# 			round(range_min, digits=digits, RoundUp),
+# 			round(range_min/2, digits=digits),
+# 			0,
+# 			round(range_max/2, digits=digits),
+# 			round(range_max, digits=digits, RoundDown),
+# 		],
+# 		width=50,
+# 	)
+
+# 	fig
+# end
+
+# ╔═╡ 48395e72-6536-4b5a-870e-03817f909a1b
+begin
+	trend_min = minimum(skipmissing(yearly_ave_arrays["CLASSIC"][:,:,15]))
+	trend_max = maximum(skipmissing(yearly_ave_arrays["CLASSIC"][:,:,15]))
+	min_mag = sqrt(trend_min * trend_min)
+	max_mag = sqrt(trend_max * trend_max)
+	min_mag < max_mag ? range_max = max_mag : range_max = min_mag
+	range_min = range_max * -1
+	range_min
 end
 
 # ╔═╡ e6290957-05e5-4fa3-bf88-49627f457bbb
@@ -75,143 +128,88 @@ begin
 	]
 end
 
-# ╔═╡ c9f64077-4de9-4593-8f62-bec1b952f0fc
-begin
-	for model in gpp_files
-		ds = NCDataset(model)
-		gpp_in = ds["gpp"]
-		gpp_in = gpp_in[961:1440,321:680,:] * seconds_in_year
-		print(mean(skipmissing(gpp_in)))
-	end
-end
-
 # ╔═╡ 2c53930f-aa63-4142-baaf-871075be81d7
 begin
 	mask_array = Array{Float32}(undef, (480, 360))
 	read!("./out_c05/YEAR_cor/GPP.ALL.AVERAGE.2015.flt", mask_array)
 	mask_array = convert(Array{Union{Missing, Float32}}, mask_array)
 	replace!(mask_array, -999.0 => missing)
+	reverse!(mask_array; dims=2)
 	missing_areas = findall(x -> ismissing(x), mask_array)
-	size(mask_array)
+	
+	heatmap(mask_array, colorrange=(0, 5))
 end
 
 # ╔═╡ 39994693-28b8-4bca-a731-beeffb7e2b18
 begin
 	trend_arrays = Dict()
-	yearly_ave_arrays = Dict()
+	yearly_spatial_ave_arrays = Dict()
 	for model in gpp_files
+		# CREATE SPATIAL TREND ARRAY
 		trend_array = Array{Union{Missing, Float32}}(undef, (480, 360))
 		ds = NCDataset(model)
 		gpp_in = ds["gpp"]
-		gpp_in = gpp_in[961:1440,321:680,:] * seconds_in_year
+		gpp_in = gpp_in[961:1440, 321:680, :] * seconds_in_year
 		gpp_yearly_aves = Array{Union{Missing, Float32}, 3}(undef, 480, 360, 21)
 		for i in 1:21
 			year_start = i*12-11
 			year_end = i*12
 			gpp_year_ave = mean(gpp_in[:,:,year_start:year_end], dims=3)
+			gpp_year_ave[missing_areas] .= missing
 			gpp_yearly_aves[:,:,i] = gpp_year_ave
-			gpp_yearly_aves[:,:,i][missing_areas] .= missing
-		end
-		yearly_ave_arrays[split(split(model, "/")[2], "_")[1]] = gpp_yearly_aves
 
-		# CREATE TREND ARRAY
-		df = DataFrame(years = convert.(Float32, years))
-		mach = machine
-		for (i, a) in collect(enumerate(eachslice(gpp_yearly_aves[:,:,:], dims=(1,2))))
-			if count(ismissing, a) == length(a)
-				trend_array[i] = missing
-				continue
-			elseif ismissing(sum(a))
-				trend_array[i] = missing
-			else
-				a = convert(Vector{Float32}, a)
-				mach = machine(ts_regr, df[:, [:years]], a)
-			end
-			fit!(mach, verbosity=0)
-			slope_array = pyconvert(Vector{Float32}, fitted_params(mach).coef)
-			trend_array[i] = slope_array[1]
+
 		end
-		trend_arrays[split(split(model, "/")[2], "_")[1]] = trend_array
+		yearly_spatial_ave_arrays[split(split(model, "/")[2], "_")[1]] = gpp_yearly_aves
+
+# 		# CREATE TREND ARRAY
+# 		df = DataFrame(years = convert.(Float32, years))
+# 		mach = machine
+# 		for (i, a) in collect(enumerate(eachslice(gpp_yearly_aves[:,:,:], dims=(1,2))))
+# 			if count(ismissing, a) == length(a)
+# 				trend_array[i] = missing
+# 				continue
+# 			elseif ismissing(sum(a))
+# 				trend_array[i] = missing
+# 			else
+# 				a = convert(Vector{Float32}, a)
+# 				mach = machine(ts_regr, df[:, [:years]], a)
+# 			end
+# 			fit!(mach, verbosity=0)
+# 			slope_array = pyconvert(Vector{Float32}, fitted_params(mach).coef)
+# 			trend_array[i] = slope_array[1]
+# 		end
+# 		trend_arrays[split(split(model, "/")[2], "_")[1]] = trend_array
 	end
 end
 
-# ╔═╡ 9d4627f5-8008-4de0-818d-5df3cf7d1636
+# ╔═╡ 1fe23621-df56-46bc-aa67-9b286ffb7440
 begin
-	# SAVE TREND DATA
-	jldsave("./trendy_gpp_trend_all_models.jld2"; 
-		cable_pop = trend_arrays["CABLE-POP"], 
-		classic = trend_arrays["CLASSIC"], 
-		clm50 = trend_arrays["CLM5.0"],
-		e3sm = trend_arrays["E3SM"],
-		edv3 = trend_arrays["EDv3"],
-		ibis = trend_arrays["IBIS"],
-	# 	isam = trend_arrays["ISAM"],
-		isba_ctrip = trend_arrays["ISBA-CTRIP"],
-		jsbach = trend_arrays["JSBACH"],
-		jules = trend_arrays["JULES"],
-		lpj_guess = trend_arrays["LPJ-GUESS"],
-		lpjml = trend_arrays["LPJmL"],
-		lpjwsl = trend_arrays["LPJwsl"],
-		lpx_bern = trend_arrays["LPX-Bern"],
-		ocn = trend_arrays["OCN"],
-		orchidee = trend_arrays["ORCHIDEE"],
-		sdgvm = trend_arrays["SDGVM"],
-		visit = trend_arrays["VISIT"],
+	# SAVE MEAN DATA
+	jldsave("./trendy_gpp_annual_spatial_mean.jld2"; 
+		cable_pop = yearly_spatial_ave_arrays["CABLE-POP"], 
+		classic = yearly_spatial_ave_arrays["CLASSIC"], 
+		clm50 = yearly_spatial_ave_arrays["CLM5.0"],
+		e3sm = yearly_spatial_ave_arrays["E3SM"],
+		edv3 = yearly_spatial_ave_arrays["EDv3"],
+		ibis = yearly_spatial_ave_arrays["IBIS"],
+	# 	isam = yearly_spatial_ave_arrays["ISAM"],
+		isba_ctrip = yearly_spatial_ave_arrays["ISBA-CTRIP"],
+		jsbach = yearly_spatial_ave_arrays["JSBACH"],
+		jules = yearly_spatial_ave_arrays["JULES"],
+		lpj_guess = yearly_spatial_ave_arrays["LPJ-GUESS"],
+		lpjml = yearly_spatial_ave_arrays["LPJmL"],
+		lpjwsl = yearly_spatial_ave_arrays["LPJwsl"],
+		lpx_bern = yearly_spatial_ave_arrays["LPX-Bern"],
+		ocn = yearly_spatial_ave_arrays["OCN"],
+		orchidee = yearly_spatial_ave_arrays["ORCHIDEE"],
+		sdgvm = yearly_spatial_ave_arrays["SDGVM"],
+		visit = yearly_spatial_ave_arrays["VISIT"],
 	)
 end
 
-# ╔═╡ 48395e72-6536-4b5a-870e-03817f909a1b
-begin
-	trend_min = minimum(skipmissing(yearly_ave_arrays["CLASSIC"][:,:,15]))
-	trend_max = maximum(skipmissing(yearly_ave_arrays["CLASSIC"][:,:,15]))
-	min_mag = sqrt(trend_min * trend_min)
-	max_mag = sqrt(trend_max * trend_max)
-	min_mag < max_mag ? range_max = max_mag : range_max = min_mag
-	range_min = range_max * -1
-	range_min
-end
-
-# ╔═╡ fa14dba9-0042-412c-a83f-539cf262b99e
-begin
-	
-	colormap_label = L"kgC\; m^2\; year^{-1}"
-	ticklabelsize=45
-	colorbarlabelsize=45
-	titlesize=45
-	colspacing=Relative(0.08)
-	digits = 3
-	
-	fig = Figure(size = (1800, 1200))
-	
-	ax1 = Axis(fig[1,1],
-		title="v05: 2000-2020",
-		xtickformat = x -> string.(Int.(x)) .* "°",
-		ytickformat = y -> string.(Int.(y)) .* "°",
-		xticklabelsize=ticklabelsize,
-		yticklabelsize=ticklabelsize,
-		titlesize=titlesize,
-		aspect=DataAspect(),
-		)
-	
-	hm = heatmap!(ax1, 60:180, 10:80, yearly_ave_arrays["CLASSIC"][:,:,15], colorrange=(range_min, range_max), colormap=:delta)
-	
-	Colorbar(
-		fig[1,2], hm, tellwidth=false, tellheight=false, halign=:center,
-		ticklabelsize=ticklabelsize,
-		label=colormap_label, 
-		labelsize=colorbarlabelsize,
-		ticks=[
-			round(range_min, digits=digits, RoundUp),
-			round(range_min/2, digits=digits),
-			0,
-			round(range_max/2, digits=digits),
-			round(range_max, digits=digits, RoundDown),
-		],
-		width=50,
-	)
-
-	fig
-end
+# ╔═╡ 1cd5bd74-de88-48fa-9ddf-ec1bcac0b3d3
+heatmap(yearly_spatial_ave_arrays["VISIT"][:,:,11], colorrange=(0, 5))
 
 # ╔═╡ 00000000-0000-0000-0000-000000000001
 PLUTO_PROJECT_TOML_CONTENTS = """
@@ -2370,7 +2368,7 @@ version = "3.5.0+0"
 # ╠═48395e72-6536-4b5a-870e-03817f909a1b
 # ╠═e6290957-05e5-4fa3-bf88-49627f457bbb
 # ╠═db7a286e-1597-4337-9725-738e6e804d1e
-# ╠═c9f64077-4de9-4593-8f62-bec1b952f0fc
+# ╠═1cd5bd74-de88-48fa-9ddf-ec1bcac0b3d3
 # ╠═2c53930f-aa63-4142-baaf-871075be81d7
 # ╠═39994693-28b8-4bca-a731-beeffb7e2b18
 # ╟─00000000-0000-0000-0000-000000000001

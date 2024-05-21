@@ -24,35 +24,76 @@ begin
 	versionlabelsize=50
 end
 
+# ╔═╡ 3c51f339-3c93-412c-9801-047236cbe7a5
+begin
+	mask_file = "./AsiaMIP_qdeg_gosat2.byt"
+	regions_array = Array{UInt8}(undef, (480, 360))
+	read!(mask_file, regions_array)
+	reverse!(regions_array; dims=2)
+	heatmap(regions_array)
+end
+
+# ╔═╡ 5cb226c5-31e5-4b6f-80a4-62a03227f5b7
+function apply_weights(yearly_ave_spatial)
+# begin
+	areas_file = "./AsiaMIP_qdeg_area.flt"
+	areas = Array{Float32}(undef, (480, 360))
+	read!(areas_file, areas)
+	areas = convert(Array{Union{Missing, Float32}}, areas)
+	reverse!(areas; dims=2)
+	replace!(areas, -9999.0 => missing)
+
+	result = areas .* yearly_ave_spatial
+	missing_areas = findall(x -> ismissing(x), result)
+	areas[missing_areas] .= missing
+	total_area = sum(skipmissing(areas))
+	
+	return sum(skipmissing(result)) / total_area
+end
+
 # ╔═╡ ca41c058-9feb-4650-a871-3f5a82979c0b
 # SVR DATA
 begin
-	# svr_ave = Array{Union{Missing, Float32}}(undef, (480, 360, 21))
 	svr_aves_c61::Array{Float32} = []
 	for (i, year) in enumerate(years)
-		yearly_ave = Array{Float32}(undef, (480, 360))
-		read!("./out_c61/YEAR_cor/GPP.ALL.209.$year.flt", yearly_ave)
-		yearly_ave = convert(Array{Union{Missing, Float32}}, yearly_ave)
-		replace!(yearly_ave, -9999.0 => missing)
-		push!(svr_aves_c61, mean(skipmissing(yearly_ave)))
+		yearly_ave_spatial = Array{Float32}(undef, (480, 360))
+		read!("./out_c61/YEAR_cor/GPP.ALL.209.$year.flt", yearly_ave_spatial)
+		yearly_ave_spatial = convert(Array{Union{Missing, Float32}}, yearly_ave_spatial)
+		replace!(yearly_ave_spatial, -9999.0 => missing)
+		reverse!(yearly_ave_spatial; dims=2)
+
+		yearly_ave = apply_weights(yearly_ave_spatial)
+
+		push!(svr_aves_c61, yearly_ave)
+		# push!(svr_aves_c61, mean(skipmissing(yearly_ave_spatial)))
 	end
 
 	svr_aves_c06::Array{Float32} = []
 	for (i, year) in enumerate(years)
-		yearly_ave = Array{Float32}(undef, (480, 360))
-		read!("./out_c06/YEAR_cor/GPP.ALL.AVERAGE.$year.flt", yearly_ave)
-		yearly_ave = convert(Array{Union{Missing, Float32}}, yearly_ave)
-		replace!(yearly_ave, -9999.0 => missing)
-		push!(svr_aves_c06, mean(skipmissing(yearly_ave)))
+		yearly_ave_spatial = Array{Float32}(undef, (480, 360))
+		read!("./out_c06/YEAR_cor/GPP.ALL.AVERAGE.$year.flt", yearly_ave_spatial)
+		yearly_ave_spatial = convert(Array{Union{Missing, Float32}}, yearly_ave_spatial)
+		replace!(yearly_ave_spatial, -9999.0 => missing)
+		reverse!(yearly_ave_spatial; dims=2)
+
+		yearly_ave = apply_weights(yearly_ave_spatial)
+		
+		push!(svr_aves_c06, yearly_ave)
+		# push!(svr_aves_c06, mean(skipmissing(yearly_ave)))
 	end
 
 	svr_aves_c05::Array{Float32} = []
 	for (i, year) in enumerate(2000:2015)
-		yearly_ave = Array{Float32}(undef, (480, 360))
-		read!("./out_c05/YEAR_cor/GPP.ALL.AVERAGE.$year.flt", yearly_ave)
-		yearly_ave = convert(Array{Union{Missing, Float32}}, yearly_ave)
-		replace!(yearly_ave, -999.0 => missing)
-		push!(svr_aves_c05, mean(skipmissing(yearly_ave)))
+		yearly_ave_spatial = Array{Float32}(undef, (480, 360))
+		read!("./out_c05/YEAR_cor/GPP.ALL.AVERAGE.$year.flt", yearly_ave_spatial)
+		yearly_ave_spatial = convert(Array{Union{Missing, Float32}}, yearly_ave_spatial)
+		replace!(yearly_ave_spatial, -999.0 => missing)
+		reverse!(yearly_ave_spatial; dims=2)
+
+		yearly_ave = apply_weights(yearly_ave_spatial)
+		
+		push!(svr_aves_c05, yearly_ave)
+		# push!(svr_aves_c05, mean(skipmissing(yearly_ave_spatial)))
 	end
 	
 end
@@ -83,15 +124,47 @@ end
 # ╔═╡ 9e8e936e-da5d-42df-b1e6-31b7d967ec52
 # TRENDY DATA
 begin
-	f = jldopen("./trendy_gpp_annual_mean.jld2")
+	f = jldopen("./trendy_gpp_annual_spatial_mean.jld2")
 	models_aves = Dict()
 	for model in models
 		model_annual_ave::Array{Float32} = []
 		for year in 1:21
-			push!(model_annual_ave, mean(skipmissing(f[model][:,:,year])))
+			yearly_ave_spatial = f[model][:,:,year]
+			yearly_ave = apply_weights(yearly_ave_spatial)
+
+			push!(model_annual_ave, yearly_ave)
+			# push!(model_annual_ave, mean(skipmissing(f[model][:,:,year])))
 			models_aves[model] = model_annual_ave
 		end
 	end
+end
+
+# ╔═╡ e3cd7aa4-fb4f-4e45-9c46-7d41885e2a0a
+begin
+	colorrange=(0.0, 4.0)
+	yearly_ave_spatial = Array{Float32}(undef, (480, 360))
+	read!("./out_c05/YEAR_cor/GPP.ALL.AVERAGE.2010.flt", yearly_ave_spatial)
+	yearly_ave_spatial = convert(Array{Union{Missing, Float32}}, yearly_ave_spatial)
+	replace!(yearly_ave_spatial, -9999.0 => missing)
+	replace!(yearly_ave_spatial, -999.0 => missing)
+	reverse!(yearly_ave_spatial; dims=2)
+	
+	mfig = Figure(size=(800, 500))
+	ax1 = Axis(mfig[1,1], aspect=DataAspect(), title="VISIT")
+	ax2 = Axis(mfig[1,2], aspect=DataAspect(), title="C05")
+	heatmap!(ax1, f["visit"][:,:,11], colorrange=colorrange)
+	hm = heatmap!(ax2, yearly_ave_spatial/3, colorrange=colorrange)
+	
+	Colorbar(
+		mfig[1,3], hm,
+		# halign=:center, vertical=false,
+		# ticklabelsize=ticklabelsize, labelsize=colorbarlabelsize, label=colormap_label,
+		# ticks=ticks,
+		# size=50,
+		height=Relative(2/4)
+	)
+
+	mfig
 end
 
 # ╔═╡ 2362b78a-0069-44ec-8505-8933adcb42f1
@@ -112,15 +185,16 @@ begin
 	
 		lines!(ax, years, model_aves, linewidth=3, alpha=0.7)
 	end
-	lines!(ax, years, svr_aves_c61, linewidth=5, color=colormap[3])
-	lines!(ax, years, svr_aves_c06, linewidth=5, color=colormap[2])
-	lines!(ax, 2000:2015, svr_aves_c05, linewidth=5, color=colormap[1])
+	
+	lines!(ax, years, svr_aves_c61/3, linewidth=5, color=colormap[3])
+	lines!(ax, years, svr_aves_c06/3, linewidth=5, color=colormap[2])
+	lines!(ax, 2000:2015, svr_aves_c05/3, linewidth=5, color=colormap[1])
 
-	text!(ax, 2000, svr_aves_c05[begin], text="V5", color=colormap[1], fontsize=versionlabelsize, align=(:center,:bottom))
+	text!(ax, 2000, svr_aves_c05[begin]/3, text="V5", color=colormap[1], fontsize=versionlabelsize, align=(:center,:bottom))
 	
-	text!(ax, 2010, svr_aves_c06[11], text="V6", color=colormap[2], fontsize=versionlabelsize, align=(:center,:bottom))
+	text!(ax, 2010, svr_aves_c06[11]/3, text="V6", color=colormap[2], fontsize=versionlabelsize, align=(:center,:bottom))
 	
-	text!(ax, 2020, svr_aves_c61[end], text="V6.1", color=colormap[3], fontsize=versionlabelsize, align=(:right,:top))
+	text!(ax, 2020, svr_aves_c61[end]/3, text="V6.1", color=colormap[3], fontsize=versionlabelsize, align=(:right,:top))
 	
 	fig
 end
@@ -1528,8 +1602,11 @@ version = "3.5.0+0"
 
 # ╔═╡ Cell order:
 # ╠═8b3d72d8-137e-11ef-3ad4-01bbddb651b1
+# ╠═e3cd7aa4-fb4f-4e45-9c46-7d41885e2a0a
 # ╠═2362b78a-0069-44ec-8505-8933adcb42f1
 # ╠═8e2feea6-e0e7-4d46-bee9-5209846761de
+# ╠═3c51f339-3c93-412c-9801-047236cbe7a5
+# ╠═5cb226c5-31e5-4b6f-80a4-62a03227f5b7
 # ╠═ca41c058-9feb-4650-a871-3f5a82979c0b
 # ╠═9e8e936e-da5d-42df-b1e6-31b7d967ec52
 # ╠═6c350803-d9f5-495f-8731-0c7c9b86bf8a
