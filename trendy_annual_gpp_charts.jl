@@ -1,5 +1,5 @@
 ### A Pluto.jl notebook ###
-# v0.19.41
+# v0.19.42
 
 using Markdown
 using InteractiveUtils
@@ -173,7 +173,6 @@ begin
 
 	ax = Axis(
 		fig[1,1],
-		# aspect=DataAspect(),
 		titlesize=titlesize,
 		ylabel=ylabel,
 		xticklabelsize=ticklabelsize, yticklabelsize=ticklabelsize, xlabelsize=ticklabelsize, ylabelsize=ticklabelsize,
@@ -182,21 +181,41 @@ begin
 	for data in models_aves
 		model_name = data[1]
 		model_aves = data[2]
+
+		six_year_ave = mean(model_aves[1:6])
 	
-		lines!(ax, years, model_aves, linewidth=3, alpha=0.7)
+		lines!(ax, years, model_aves ./ six_year_ave, linewidth=3, alpha=0.3)
 	end
 	
-	lines!(ax, years, svr_aves_c61/3, linewidth=5, color=colormap[3])
-	lines!(ax, years, svr_aves_c06/3, linewidth=5, color=colormap[2])
-	lines!(ax, 2000:2015, svr_aves_c05/3, linewidth=5, color=colormap[1])
+	lines!(ax, years, svr_aves_c61 ./ mean(svr_aves_c61[1:6]), linewidth=5, color=colormap[3])
+	lines!(ax, years, svr_aves_c06 ./ mean(svr_aves_c06[1:6]), linewidth=5, color=colormap[2])
+	lines!(ax, 2000:2015, svr_aves_c05 ./ mean(svr_aves_c05[1:6]), linewidth=5, color=colormap[1])
 
-	text!(ax, 2000, svr_aves_c05[begin]/3, text="V5", color=colormap[1], fontsize=versionlabelsize, align=(:center,:bottom))
+	# text!(ax, 2000, svr_aves_c05[begin], text="V5", color=colormap[1], fontsize=versionlabelsize, align=(:center,:bottom))
 	
-	text!(ax, 2010, svr_aves_c06[11]/3, text="V6", color=colormap[2], fontsize=versionlabelsize, align=(:center,:bottom))
+	# text!(ax, 2010, svr_aves_c06[11], text="V6", color=colormap[2], fontsize=versionlabelsize, align=(:center,:bottom))
 	
-	text!(ax, 2020, svr_aves_c61[end]/3, text="V6.1", color=colormap[3], fontsize=versionlabelsize, align=(:right,:top))
+	# text!(ax, 2020, svr_aves_c61[end], text="V6.1", color=colormap[3], fontsize=versionlabelsize, align=(:right,:top))
 	
 	fig
+end
+
+# ╔═╡ ac1b9795-6c6b-465e-9096-1ecd4c35b5ed
+begin
+	c61_variance = extrema(svr_aves_c61/2)[2] - extrema(svr_aves_c61/2)[1]
+	c05_variance = extrema(svr_aves_c05)[2] - extrema(svr_aves_c05)[1]
+
+	trendy_variance = []
+	for data in models_aves
+		model_aves = data[2]
+		model_variance = extrema(model_aves)[2] - extrema(model_aves)[1]
+		println(model_variance)
+		push!(trendy_variance, model_variance)
+	end
+
+	# println(mean(trendy_variance))
+	println(c05_variance)
+	
 end
 
 # ╔═╡ 00000000-0000-0000-0000-000000000001
@@ -1604,6 +1623,7 @@ version = "3.5.0+0"
 # ╠═8b3d72d8-137e-11ef-3ad4-01bbddb651b1
 # ╠═e3cd7aa4-fb4f-4e45-9c46-7d41885e2a0a
 # ╠═2362b78a-0069-44ec-8505-8933adcb42f1
+# ╠═ac1b9795-6c6b-465e-9096-1ecd4c35b5ed
 # ╠═8e2feea6-e0e7-4d46-bee9-5209846761de
 # ╠═3c51f339-3c93-412c-9801-047236cbe7a5
 # ╠═5cb226c5-31e5-4b6f-80a4-62a03227f5b7
