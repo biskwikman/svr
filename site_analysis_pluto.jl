@@ -1,5 +1,5 @@
 ### A Pluto.jl notebook ###
-# v0.19.41
+# v0.19.42
 
 using Markdown
 using InteractiveUtils
@@ -42,7 +42,9 @@ begin
 	input_df[!,:Key] = string.(input_df[:,:Year], "_", input_df[:, :DOY], "_", input_df[:,:Site_ID])
 	input_df = innerjoin(input_df, veg_df, on=:Site_ID)
 	input_df
-	nothing
+	println(mean(filter(:Version => isequal(:c61), input_df)[:, :Input_GPP]))
+	println(mean(filter(:Version => isequal(:c05), input_df)[:, :Input_GPP]))
+	# nothing
 end
 
 # ╔═╡ 90f09075-9c22-4e1a-9c1a-6d4d475cbd0a
@@ -62,7 +64,9 @@ begin
 	rename!(output_df, Dict(:Column1=>:GPP, :Column3=>:Year, :Column4=>:DOY, :Column5=>:Site_ID, :Column6=>:Crossval_ID))
 	output_df[!, :Key] = string.(output_df[:, :Year], "_", output_df[:, :DOY], "_", output_df[:, :Site_ID])
 	output_df
-	nothing
+	println(mean(filter(:Version => isequal(:c61), output_df)[:, :GPP]))
+	println(mean(filter(:Version => isequal(:c06), output_df)[:, :GPP]))
+	# nothing
 end
 
 # ╔═╡ dfee6f08-e0c7-4bb5-8032-4d9277c1bcac
@@ -77,6 +81,8 @@ begin
 	append!(mdf, means)
 	transform!(mdf, :Veg_Type_Code => (x -> x .∈ [1:5]) => :Forest)
 	mdf
+	println(mean(filter(:Version => isequal(:c61), mdf)[:, :Input_GPP]))
+	println(mean(filter(:Version => isequal(:c06), mdf)[:, :Input_GPP]))
 end
 
 # ╔═╡ 36705360-2d5e-4663-bb5e-012cf73fd4b0
@@ -119,7 +125,9 @@ begin
 		sort(Cols(:Forest, :Version))
 	end
 
-	println(stats_df)
+	# print(stats_df)
+	# println(veg_type_stats_df)
+	println(forest_stats_df)
 end
 
 # ╔═╡ 97fce899-bdf2-4afa-9851-7a9ec1ba408b
@@ -164,7 +172,7 @@ begin
 			# xlabel=rich("Obs GPP (gC m",superscript("-2"),"day",superscript("-1"),")"),
 			xlabel=L"Obs\; GPP\; (gC m^{-2}day^{-1})",
 			# ylabel=rich("SVR GPP (gC m",superscript("-2"),"day",superscript("-1"),")"),
-			ylabel=L"SVR\; GPP\; (gC m^{-2}day{-1})",
+			ylabel=L"SVR\; GPP\; (gC m^{-2}day^{-1})",
 			ylabelvisible=ylabelvisible,
 			limits=(0, 18, 0, 18),
 			aspect=DataAspect(),
