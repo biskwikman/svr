@@ -1,5 +1,5 @@
 ### A Pluto.jl notebook ###
-# v0.19.41
+# v0.19.42
 
 using Markdown
 using InteractiveUtils
@@ -30,7 +30,7 @@ begin
 end
 
 # ╔═╡ ba842c64-3f63-42c2-bade-d1d640d254b4
-@bind region_name Select(["East Asia","Southeast Asia","South Asia","Siberia"])
+@bind line_years Select([2000:2015, 2000:2020])
 
 # ╔═╡ 90ef6c63-1be1-4095-8012-90bfccaef3e2
 # save(@sprintf("./output/%s.png", region_name), f_pres)
@@ -42,14 +42,14 @@ begin
 	legendwidth = 150
 	versionlabelsize = 75
 	regionnamefontsize = 70
-	axistitlesize = 45
-	ticklabelsize = 50
-	linewidth = 5
-	reglinewidth = 10
+	axistitlesize = 55
+	ticklabelsize = 65
+	linewidth = 7
+	reglinewidth = 15
 	yearformat = xs -> ["'$(SubString(string(x), 3,4))" for x in xs]
-	xlabel = L"Year"
 	xticks = 2000:2:2020
 	linestyle = Linestyle([0.5, 1.0, 1.8, 3.0])
+	versions = ["005", "006", "061"]
 end
 
 # ╔═╡ 34cf21c3-5922-4e65-b538-c4dd4a811585
@@ -83,42 +83,63 @@ begin
 		"MOD15A2H" => mod15a2,
 	)
 
-	chart_data = Dict(
-		"GPP" => Dict{String, Vector{Float64}}(
+	# yearly_means = Dict(
+	# 	"GPP" => Dict{String, Float32}(), 
+	# )
+
+	region_names = ["East Asia","Southeast Asia","South Asia","Siberia"]
+
+	yearly_means = Dict(
+		"South Asia" => Dict{String, Float32}(), 
+		"Southeast Asia" => Dict{String, Float32}(), 
+		"Siberia" => Dict{String, Float32}(), 
+		"East Asia" => Dict{String, Float32}(), 
+	)
+
+	# chart_data = Dict(
+	# 	"GPP" => Dict{String, Vector{Union{Missing, Float32}}}(
+	# 		"005" => [],
+	# 		"005_var" => [],
+	# 		"006" => [],
+	# 		"006_var" => [],
+	# 		"061" => [],
+	# 		"061_var" => [],	
+	# 	),
+	# )
+
+		chart_data = Dict(
+		"South Asia" => Dict{String, Vector{Union{Missing, Float32}}}(
 			"005" => [],
+			"005_var" => [],
 			"006" => [],
-			"061" => [],		
+			"006_var" => [],
+			"061" => [],
+			"061_var" => [],	
 		),
-		"LST_Day" => Dict{String, Vector{Float64}}(
+		"Southeast Asia" => Dict{String, Vector{Union{Missing, Float32}}}(
 			"005" => [],
+			"005_var" => [],
 			"006" => [],
+			"006_var" => [],
 			"061" => [],
-		), 
-		"LST_Night" => Dict{String, Vector{Float64}}(
+			"061_var" => [],	
+		),
+		"Siberia" => Dict{String, Vector{Union{Missing, Float32}}}(
 			"005" => [],
+			"005_var" => [],
 			"006" => [],
+			"006_var" => [],
 			"061" => [],
-		), 
-		"EVI" => Dict{String, Vector{Float64}}(
+			"061_var" => [],	
+		),
+		"East Asia" => Dict{String, Vector{Union{Missing, Float32}}}(
 			"005" => [],
+			"005_var" => [],
 			"006" => [],
+			"006_var" => [],
 			"061" => [],
-		), 
-		"NDVI" => Dict{String, Vector{Float64}}(
-			"005" => [],
-			"006" => [],
-			"061" => [],
-		), 
-		"Fpar" => Dict{String, Vector{Float64}}(
-			"005" => [],
-			"006" => [],
-			"061" => [],
-		), 
-		"Lai" => Dict{String, Vector{Float64}}(
-			"005" => [],
-			"006" => [],
-			"061" => [],
-		), 
+			"061_var" => [],	
+		),
 	)
 
 	string.(years)
@@ -131,6 +152,7 @@ begin
 	read!(areas_file, areas)
 	valid_areas = convert(Array{Union{Missing, Float32}}, areas)
 	replace!(valid_areas, -9999.0 => missing)
+	nothing
 end
 
 # ╔═╡ 0cd2e669-fa54-4eb5-9fa6-dfc79d83f43a
@@ -154,7 +176,7 @@ end
 
 # ╔═╡ bb7c9ce3-21ca-4c50-8973-b6b690e7cb0c
 # Get mean of every mesh datum in specified area per month
-function get_monthly_vals(filepath, areas, sample_missing)
+function get_monthly_vals(filepath, areas, sample_missing, region_name)
 	asia = Array{Float32}(undef, (480, 360, 12))
 	read!(filepath, asia)
 	# Restrict data to either Missing or Float32
@@ -178,7 +200,7 @@ end
 
 # ╔═╡ f242a37f-77f1-4031-8e93-fa01adac5dc0
 # Create arrays of averaged data
-function create_averages(areas, sample_missing)
+function create_averages(areas, sample_missing, region_name)
 	product_means = Dict(
 			"005"=>Vector{Vector{Float64}}(),
 			"006"=>Vector{Vector{Float64}}(),
@@ -204,7 +226,7 @@ function create_averages(areas, sample_missing)
 			if out == "out_c05" && i in string.(collect(2016:2020))
 				continue
 			end
-			push!(v, get_monthly_vals(filepath, areas, sample_missing))
+			push!(v, get_monthly_vals(filepath, areas, sample_missing, region_name))
 		end
 	end
 	return product_means
@@ -215,14 +237,18 @@ end
 begin
 	# make function to create weight and missing data.
 		
-		sample_missing = get_sample_data()
-		valid_areas[sample_missing] .= missing
+	sample_missing = get_sample_data()
+	valid_areas[sample_missing] .= missing
 
-		monthly_vals = create_averages(valid_areas, sample_missing)
+	monthly_vals = undef
+	for region_name in region_names
+		monthly_vals = create_averages(valid_areas, sample_missing, region_name)
 		for (key, val) in monthly_vals
-			chart_data["GPP"][key] = mean.(val)
+			chart_data[region_name][key] = mean.(val)
+			# chart_data["GPP"][key] = mean.(val)
 		end
-	chart_data["GPP"]
+	end
+	# chart_data["GPP"]
 end
 
 # ╔═╡ 2c368ca7-e898-4b63-9d5c-4dc2580ac15d
@@ -233,117 +259,157 @@ colormap = Makie.wong_colors()
 begin
 	TheilSenRegressor = @load TheilSenRegressor pkg=MLJScikitLearnInterface
 	ts_regr = TheilSenRegressor()
-	chart_order_pres = ["GPP"]
-	f_pres = Figure(resolution = (1600, 800))
+	# chart_order_pres = ["Siberia"]
+	f_pres = Figure(resolution = (2900, 1800))
 	ga_pres = f_pres[1, 1] = GridLayout()
+	gb_pres = f_pres[2, 1] = GridLayout()
+	gc_pres = f_pres[1, 2] = GridLayout()
+	gd_pres = f_pres[2, 2] = GridLayout()
 	gl_pres = f_pres[0, :] = GridLayout()
-	grids_pres = [ga_pres]
-	Label(gl_pres[1,1], region_name, fontsize=regionnamefontsize, tellwidth=false)
+	grids_pres = [ga_pres, gb_pres, gc_pres, gd_pres]
+	Label(gl_pres[1,1], "GPP Estimation: Variation from 2000-2005 Mean", fontsize=regionnamefontsize, tellwidth=false)
 
-	for (i, dataset) in enumerate(chart_order_pres)
+	for (i, dataset) in enumerate(region_names)
+		limits = []
 		mean005 = mean(chart_data[dataset]["005"][1:6])
 		mean006 = mean(chart_data[dataset]["006"][1:6])
 		mean061 = mean(chart_data[dataset]["061"][1:6])
-
-		chart_order_pres[i] in ["LST_Day"] ? title="Day Land Surface Temp" : title=uppercase(dataset) * ": Variation from 2000-2005 Mean"
+		title=uppercase(dataset)
 		ylabel = ""
-		if dataset == "LST_Day"
-			ylabel = L"°C"
-		elseif dataset == "GPP"
+		xlabel = ""
+		xlabelvisible=false
+		if i == 2
 			ylabel = L"kgC\; m^2\; year^{-1}"
+			xlabel = L"Year"
+			xlabelvisible=true
+		elseif i == 4
+			xlabelvisible=true
 		end
 
-		ylimmax = maximum([maximum(chart_data[dataset]["005"] .- mean005), maximum(chart_data[dataset]["006"] .- mean006), maximum(chart_data[dataset]["061"] .- mean061)])
-		ylimmin = minimum([minimum(chart_data[dataset]["005"] .- mean005), minimum(chart_data[dataset]["006"] .- mean006), minimum(chart_data[dataset]["061"] .- mean061)])
-		ylimmax = ((ylimmax - ylimmin) * 0.1) + ylimmax
-		ylimmin = ylimmin - ((ylimmax - ylimmin) * 0.1)
+		for ver in versions
+			# Calculate means for 2000-2005
+			yearly_means[dataset][ver] = mean(chart_data[dataset][ver][1:6])
+
+			# Convenience
+			chart_data[dataset][ver * "_var"] = chart_data[dataset][ver] .- yearly_means[dataset][ver]
+
+			# Calculate chart limits
+			push!(limits, extrema(chart_data[dataset][ver * "_var"])...)
+		end
+
+		push!(chart_data[dataset]["005_var"], missing, missing, missing, missing, missing)
+
+		ylimmax = ((extrema(limits)[2] - extrema(limits)[1]) * 0.1) + extrema(limits)[2]
+		ylimmin = extrema(limits)[1] - ((extrema(limits)[2] - extrema(limits)[1]) * 0.1)
 		
 		ax = Axis(
 			grids_pres[i][1,1], 
 			title=title, xlabel=xlabel, ylabel=ylabel, xticks=xticks,
-			xtickformat=yearformat,
+			xtickformat=yearformat, xticklabelsvisible=xlabelvisible, xticksvisible=xlabelvisible,
 			xticklabelsize=ticklabelsize, yticklabelsize=ticklabelsize, xlabelsize=ticklabelsize, ylabelsize=ticklabelsize, titlesize=axistitlesize,
-			limits=(minimum(years)-1, maximum(years)+1, ylimmin, ylimmax),
+			limits=(minimum(years)-1, maximum(years)+1, -0.1, 0.5),
+			# limits=(minimum(years)-1, maximum(years)+1, ylimmin, ylimmax)
 		)
 		
 		poly!(ax, Point2f[(0, -100), (2005.0, -100), (2005.0, 100), (0, 100)], color=RGBA(0.1, 0.1, 0.1, 0.1))
 
-		lines!(ax, range(2000,2015), chart_data[dataset]["005"] .- mean005, linewidth=linewidth, color=(colormap[1], 0.5))
-		lines!(ax, years, chart_data[dataset]["006"] .- mean006, linewidth=linewidth, color=(colormap[2], 0.5))
-		lines!(ax, years, chart_data[dataset]["061"] .- mean061, linewidth=linewidth, color=(colormap[3], 0.5))
-
 		df = DataFrame(
 			years = convert.(Float32, years),
-			v06 = chart_data[dataset]["006"] .- mean006,
-			v61 = chart_data[dataset]["061"] .- mean061,
+			v005 = chart_data[dataset]["005_var"],
+			v006 = chart_data[dataset]["006_var"],
+			v061 = chart_data[dataset]["061_var"],
 		)
 
-		df05 = DataFrame(
-			years = convert.(Float32, range(2000, 2015)),
-			v05 = chart_data[dataset]["005"] .- mean005
-		)
+		# df05 = DataFrame(
+		# 	years = convert.(Float32, range(2000, 2015)),
+		# 	v05 = chart_data[dataset]["005"] .- mean005
+		# )
 
-		ts_machine_05 = machine(ts_regr, df05[:, [:years]], df05.v05)
-		fit!(ts_machine_05, verbosity=0)
-		regr05 = predict_mode(ts_machine_05)
+		df = df[1:length(line_years), :]
 
-		# Add 2016-2020 data based on slope
-		while length(regr05) < 21
-			append!(regr05, last(regr05) + regr05[2] - regr05[1])
+		for (iv, ver) in enumerate(versions)
+			lines!(ax, line_years, chart_data[dataset][ver * "_var"][1:length(line_years)], label="v" * ver[2:3] * "μ", linewidth=linewidth, alpha=0.5, color=colormap[iv])
+
+			# Train data for sens slope
+			ts_machine = machine(ts_regr, dropmissing(df[:, Cols("years", "v"*ver)])[:, [:years]], dropmissing(df[:, Cols("years", "v"*ver)])[:, Cols("v"*ver)])
+			fit!(ts_machine, verbosity=0)
+			regr = predict_mode(ts_machine)
+
+			# Draw regressor lines
+			lines!(ax, df.years[1:length(regr)], round.(regr, digits=5), label="v"*ver[2:3]*"lm", linewidth=reglinewidth, linestyle=linestyle, color=colormap[iv])
+
+			# Draw labels
+			label = replace(ver, "0"=>"")
+			if i == 1
+				text!(ax, 0, 1, text="V"*label, color=colormap[iv], font=:bold, fontsize=versionlabelsize, align=(:left,:top), space=:relative, offset=((iv-1)*120, 0))
+			end
 		end
-		
-		ts_machine_06 = machine(ts_regr, df[:, [:years]], df.v06)
-		fit!(ts_machine_06, verbosity=0)
-		regr06 = predict_mode(ts_machine_06)
-	
-		ts_machine_61 = machine(ts_regr, df[:, [:years]], df.v61)
-		fit!(ts_machine_61, verbosity=0)
-		regr61 = predict_mode(ts_machine_61)
 
-		lines!(ax, df.years, round.(regr05, digits=5), label="v5", linewidth=reglinewidth, linestyle=linestyle, color=colormap[1])
-		lines!(ax, df.years, round.(regr06, digits=5), label="v6", linewidth=reglinewidth, linestyle=linestyle, color=colormap[2])
-		lines!(ax, df.years, round.(regr61, digits=5), label="v6.1", linewidth=reglinewidth, linestyle=linestyle, color=colormap[3])
-		text!(ax, df.years[begin], round.(regr05, digits=5)[begin], text="V5", color=colormap[1], fontsize=versionlabelsize, align=(:center,:bottom))
-		text!(ax, df.years[11], round.(regr06, digits=5)[11], text="V6", color=colormap[2], fontsize=versionlabelsize, align=(:center,:bottom))
-		text!(ax, df.years[end], round.(regr61, digits=5)[end], text="V6.1", color=colormap[3], fontsize=versionlabelsize, align=(:right,:top))
+		# lines!(ax, range(2000,2015), chart_data[dataset]["005"] .- mean005, linewidth=linewidth, color=(colormap[1], 0.5))
+		# lines!(ax, years, chart_data[dataset]["006"] .- mean006, linewidth=linewidth, color=(colormap[2], 0.5))
+		# lines!(ax, years, chart_data[dataset]["061"] .- mean061, linewidth=linewidth, color=(colormap[3], 0.5))
+
+		# ts_machine_05 = machine(ts_regr, df05[:, [:years]], df05.v05)
+		# fit!(ts_machine_05, verbosity=0)
+		# regr05 = predict_mode(ts_machine_05)
+
+		# # Add 2016-2020 data based on slope
+		# while length(regr05) < 21
+		# 	append!(regr05, last(regr05) + regr05[2] - regr05[1])
+		# end
+		
+		# ts_machine_06 = machine(ts_regr, df[:, [:years]], df.v06)
+		# fit!(ts_machine_06, verbosity=0)
+		# regr06 = predict_mode(ts_machine_06)
+	
+		# ts_machine_61 = machine(ts_regr, df[:, [:years]], df.v61)
+		# fit!(ts_machine_61, verbosity=0)
+		# regr61 = predict_mode(ts_machine_61)
+
+		# lines!(ax, df.years, round.(regr05, digits=5), label="v5", linewidth=reglinewidth, linestyle=linestyle, color=colormap[1])
+		# lines!(ax, df.years, round.(regr06, digits=5), label="v6", linewidth=reglinewidth, linestyle=linestyle, color=colormap[2])
+		# lines!(ax, df.years, round.(regr61, digits=5), label="v6.1", linewidth=reglinewidth, linestyle=linestyle, color=colormap[3])
+		# text!(ax, df.years[begin], round.(regr05, digits=5)[begin], text="V5", color=colormap[1], fontsize=versionlabelsize, align=(:center,:bottom))
+		# text!(ax, df.years[11], round.(regr06, digits=5)[11], text="V6", color=colormap[2], fontsize=versionlabelsize, align=(:center,:bottom))
+		# text!(ax, df.years[end], round.(regr61, digits=5)[end], text="V6.1", color=colormap[3], fontsize=versionlabelsize, align=(:right,:top))
 
 		row = ceil(i / 2)
 		row = convert(Int, row)
 		col = ceil(i / 3)
 		col = convert(Int, col)
 
-		v05_p = string(round(mk_original_test(df05.v05).p, digits=3))
-		v05_τ = string(round(mk_original_test(df05.v05).τ, digits=2))
-		println(mk_original_test(df05.v05))
-		v05_test = LineElement(linewidth=reglinewidth, linestyle=:dash, color=(colormap[1]))
-		v06_p = string(round(mk_original_test(df.v06).p, digits=3))
-		v06_τ = string(round(mk_original_test(df.v06).τ, digits=2))
-		println(mk_original_test(df.v06))
-		v06_test = LineElement(linewidth=reglinewidth, linestyle=:dash, color=(colormap[2]))
-		v61_p = string(round(mk_original_test(df.v61).p, digits=3))
-		v61_τ = string(round(mk_original_test(df.v61).τ, digits=2))
-		println(mk_original_test(df.v61))
-		v61_test = LineElement(linewidth=reglinewidth, linestyle=:dash, color=(colormap[3]))
+		# v05_p = string(round(mk_original_test(df05.v05).p, digits=3))
+		# v05_τ = string(round(mk_original_test(df05.v05).τ, digits=2))
+		# println(mk_original_test(df05.v05))
+		# v05_test = LineElement(linewidth=reglinewidth, linestyle=:dash, color=(colormap[1]))
+		# v06_p = string(round(mk_original_test(df.v06).p, digits=3))
+		# v06_τ = string(round(mk_original_test(df.v06).τ, digits=2))
+		# println(mk_original_test(df.v06))
+		# v06_test = LineElement(linewidth=reglinewidth, linestyle=:dash, color=(colormap[2]))
+		# v61_p = string(round(mk_original_test(df.v61).p, digits=3))
+		# v61_τ = string(round(mk_original_test(df.v61).τ, digits=2))
+		# println(mk_original_test(df.v61))
+		# v61_test = LineElement(linewidth=reglinewidth, linestyle=:dash, color=(colormap[3]))
 
-		Legend(f_pres[i,2][1,1],
-			[v05_test, v06_test, v61_test],
-			[v05_p, v06_p, v61_p],
-			"P (MK)",
-			labelsize=legendlabelsize,
-			titlesize=legendtitlesize,
-			width=legendwidth,
-			valign=:bottom,
-		)
+		# Legend(f_pres[i,2][1,1],
+		# 	[v05_test, v06_test, v61_test],
+		# 	[v05_p, v06_p, v61_p],
+		# 	"P (MK)",
+		# 	labelsize=legendlabelsize,
+		# 	titlesize=legendtitlesize,
+		# 	width=legendwidth,
+		# 	valign=:bottom,
+		# )
 
-		Legend(f_pres[i,2][2,1],
-			[v05_test, v06_test, v61_test],
-			[v05_τ, v06_τ, v61_τ],
-			"τ (MK)",
-			labelsize=legendlabelsize,
-			titlesize=legendtitlesize,
-			width=legendwidth,
-			valign=:top,
-		)
+		# Legend(f_pres[i,2][2,1],
+		# 	[v05_test, v06_test, v61_test],
+		# 	[v05_τ, v06_τ, v61_τ],
+		# 	"τ (MK)",
+		# 	labelsize=legendlabelsize,
+		# 	titlesize=legendtitlesize,
+		# 	width=legendwidth,
+		# 	valign=:top,
+		# )
 
 		valign=:top
 		halign=:left
@@ -356,7 +422,7 @@ html"""<style>
 main {
     max-width: 75%;
     margin-left: 1%;
-    margin-right: 2% !important;
+    margin-right: 20% !important;
 }
 """
 

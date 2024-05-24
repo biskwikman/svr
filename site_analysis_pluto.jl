@@ -125,9 +125,9 @@ begin
 		sort(Cols(:Forest, :Version))
 	end
 
-	# print(stats_df)
+	print(stats_df)
 	# println(veg_type_stats_df)
-	println(forest_stats_df)
+	# println(forest_stats_df)
 end
 
 # ╔═╡ 97fce899-bdf2-4afa-9851-7a9ec1ba408b

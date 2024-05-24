@@ -19,7 +19,6 @@ begin
 	labelsize=45
 	colorbarlabelsize=45
 	titlesize=45
-	ylabel = L"kgC\; m^2\; year^{-1}"
 	colormap = Makie.wong_colors()
 	versionlabelsize=50
 end
@@ -173,9 +172,11 @@ begin
 
 	ax = Axis(
 		fig[1,1],
+		title="GPP: Variation from '00-'05 mean",
 		titlesize=titlesize,
-		ylabel=ylabel,
+		ylabel=L"%",
 		xticklabelsize=ticklabelsize, yticklabelsize=ticklabelsize, xlabelsize=ticklabelsize, ylabelsize=ticklabelsize,
+		xlabel=L"Year"
 	)
 
 	for data in models_aves
@@ -187,11 +188,14 @@ begin
 		lines!(ax, years, model_aves ./ six_year_ave, linewidth=3, alpha=0.3)
 	end
 	
-	lines!(ax, years, svr_aves_c61 ./ mean(svr_aves_c61[1:6]), linewidth=5, color=colormap[3])
-	lines!(ax, years, svr_aves_c06 ./ mean(svr_aves_c06[1:6]), linewidth=5, color=colormap[2])
-	lines!(ax, 2000:2015, svr_aves_c05 ./ mean(svr_aves_c05[1:6]), linewidth=5, color=colormap[1])
+	lines!(ax, years, svr_aves_c61 ./ mean(svr_aves_c61[1:6]), linewidth=7, color=colormap[3])
+	lines!(ax, years, svr_aves_c06 ./ mean(svr_aves_c06[1:6]), linewidth=7, color=colormap[2])
+	lines!(ax, 2000:2015, svr_aves_c05 ./ mean(svr_aves_c05[1:6]), linewidth=7, color=colormap[1])
 
-	# text!(ax, 2000, svr_aves_c05[begin], text="V5", color=colormap[1], fontsize=versionlabelsize, align=(:center,:bottom))
+	for (iv, ver) in enumerate(["V5", "V6", "V6.1"])
+		text!(ax, 0, 1, text=ver, color=colormap[iv], font=:bold, fontsize=versionlabelsize, align=(:left,:top), space=:relative,
+		offset=((iv-1)*80, 0))
+	end
 	
 	# text!(ax, 2010, svr_aves_c06[11], text="V6", color=colormap[2], fontsize=versionlabelsize, align=(:center,:bottom))
 	
@@ -214,7 +218,6 @@ begin
 	end
 
 	# println(mean(trendy_variance))
-	println(c05_variance)
 	
 end
 
