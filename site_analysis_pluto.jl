@@ -1,5 +1,5 @@
 ### A Pluto.jl notebook ###
-# v0.19.42
+# v0.19.45
 
 using Markdown
 using InteractiveUtils
@@ -110,9 +110,18 @@ begin
 		)
 		leftjoin!(igbp_df, on = :Veg_Type_Code)
 		groupby(Cols(:Version, :Veg_Type))
-		@subset(:R2 .== maximum(:R2))
-		sort([:Version, order(:R2, rev=true)])
+		@rsubset(:Ensemble ∈ ["Ensemble Mean", "209"])
+		# sort([:Version, order(:R2, rev=true)])
 	end
+	veg_type_stats_df = veg_type_stats_df[
+		veg_type_stats_df.Ensemble .== "Ensemble Mean" .&& 
+		veg_type_stats_df.Version .== Symbol("c05") .||
+		veg_type_stats_df.Ensemble .== "209" .&& 
+		veg_type_stats_df.Version .== Symbol("c06") .|| 
+		veg_type_stats_df.Ensemble .== "Ensemble Mean" .&& 
+		veg_type_stats_df.Version .== Symbol("c61"),
+		:]
+	sort!(veg_type_stats_df, [:Version, order(:R2, rev=true)])
 
 	forest_stats_df = @chain mdf begin
 		groupby(Cols(:Version, :Ensemble, :Forest))
@@ -125,10 +134,13 @@ begin
 		sort(Cols(:Forest, :Version))
 	end
 
-	print(stats_df)
-	# println(veg_type_stats_df)
+	# print(stats_df)
+	println(veg_type_stats_df)
 	# println(forest_stats_df)
 end
+
+# ╔═╡ bae0d21d-80c0-4c37-86d6-eb925f6c0e6c
+# CSV.write("veg_type_performance.csv", veg_type_stats_df)
 
 # ╔═╡ 97fce899-bdf2-4afa-9851-7a9ec1ba408b
 begin
@@ -239,7 +251,7 @@ StatsBase = "~0.34.2"
 PLUTO_MANIFEST_TOML_CONTENTS = """
 # This file is machine-generated - editing it directly is not advised
 
-julia_version = "1.10.3"
+julia_version = "1.10.4"
 manifest_format = "2.0"
 project_hash = "ff3f9365c19773a8ef225d8d175c13b865d76b0a"
 
@@ -1913,6 +1925,7 @@ version = "3.5.0+0"
 # ╠═90f09075-9c22-4e1a-9c1a-6d4d475cbd0a
 # ╠═dfee6f08-e0c7-4bb5-8032-4d9277c1bcac
 # ╠═36705360-2d5e-4663-bb5e-012cf73fd4b0
+# ╠═bae0d21d-80c0-4c37-86d6-eb925f6c0e6c
 # ╠═97fce899-bdf2-4afa-9851-7a9ec1ba408b
 # ╠═cf17f699-8703-4fab-ac58-583c0fb65db6
 # ╠═2d8753b7-b58b-4532-827e-cc03b00f04f1

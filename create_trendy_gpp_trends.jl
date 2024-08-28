@@ -1,5 +1,5 @@
 ### A Pluto.jl notebook ###
-# v0.19.41
+# v0.19.45
 
 using Markdown
 using InteractiveUtils
@@ -30,7 +30,7 @@ begin
 	# 	e3sm = trend_arrays["E3SM"],
 	# 	edv3 = trend_arrays["EDv3"],
 	# 	ibis = trend_arrays["IBIS"],
-	# # 	isam = trend_arrays["ISAM"],
+	# 	isam = trend_arrays["ISAM"],
 	# 	isba_ctrip = trend_arrays["ISBA-CTRIP"],
 	# 	jsbach = trend_arrays["JSBACH"],
 	# 	jules = trend_arrays["JULES"],
@@ -42,6 +42,31 @@ begin
 	# 	orchidee = trend_arrays["ORCHIDEE"],
 	# 	sdgvm = trend_arrays["SDGVM"],
 	# 	visit = trend_arrays["VISIT"],
+	# )
+end
+
+# ╔═╡ 1fe23621-df56-46bc-aa67-9b286ffb7440
+begin
+	# SAVE SPATIAL TREND DATA
+	# jldsave("./trendy_gpp_annual_spatial_mean.jld2"; 
+	# 	cable_pop = yearly_spatial_ave_arrays["CABLE-POP"], 
+	# 	classic = yearly_spatial_ave_arrays["CLASSIC"], 
+	# 	clm50 = yearly_spatial_ave_arrays["CLM5.0"],
+	# 	e3sm = yearly_spatial_ave_arrays["E3SM"],
+	# 	edv3 = yearly_spatial_ave_arrays["EDv3"],
+	# 	ibis = yearly_spatial_ave_arrays["IBIS"],
+	# 	isam = yearly_spatial_ave_arrays["ISAM"],
+	# 	isba_ctrip = yearly_spatial_ave_arrays["ISBA-CTRIP"],
+	# 	jsbach = yearly_spatial_ave_arrays["JSBACH"],
+	# 	jules = yearly_spatial_ave_arrays["JULES"],
+	# 	lpj_guess = yearly_spatial_ave_arrays["LPJ-GUESS"],
+	# 	lpjml = yearly_spatial_ave_arrays["LPJmL"],
+	# 	lpjwsl = yearly_spatial_ave_arrays["LPJwsl"],
+	# 	lpx_bern = yearly_spatial_ave_arrays["LPX-Bern"],
+	# 	ocn = yearly_spatial_ave_arrays["OCN"],
+	# 	orchidee = yearly_spatial_ave_arrays["ORCHIDEE"],
+	# 	sdgvm = yearly_spatial_ave_arrays["SDGVM"],
+	# 	visit = yearly_spatial_ave_arrays["VISIT"],
 	# )
 end
 
@@ -87,21 +112,11 @@ end
 # 	fig
 # end
 
-# ╔═╡ 48395e72-6536-4b5a-870e-03817f909a1b
-begin
-	trend_min = minimum(skipmissing(yearly_ave_arrays["CLASSIC"][:,:,15]))
-	trend_max = maximum(skipmissing(yearly_ave_arrays["CLASSIC"][:,:,15]))
-	min_mag = sqrt(trend_min * trend_min)
-	max_mag = sqrt(trend_max * trend_max)
-	min_mag < max_mag ? range_max = max_mag : range_max = min_mag
-	range_min = range_max * -1
-	range_min
-end
-
 # ╔═╡ e6290957-05e5-4fa3-bf88-49627f457bbb
 begin
 	years = 2000:2020
-	seconds_in_year = 31536000
+	scale_factor = 86400000
+	# seconds_in_year = 31536000
 end
 
 # ╔═╡ db7a286e-1597-4337-9725-738e6e804d1e
@@ -113,7 +128,7 @@ begin
 		"trendy/E3SM_S3_gpp.nc",
 		"trendy/EDv3_S3_gpp.nc",
 		"trendy/IBIS_S3_gpp.nc",
-		# "trendy/ISAM_S3_gpp.nc",
+		"trendy/ISAM_S3_gpp.nc",
 		"trendy/ISBA-CTRIP_S3_gpp.nc",
 		"trendy/JSBACH_S3_gpp.nc",
 		"trendy/JULES_S3_gpp.nc",
@@ -149,7 +164,7 @@ begin
 		trend_array = Array{Union{Missing, Float32}}(undef, (480, 360))
 		ds = NCDataset(model)
 		gpp_in = ds["gpp"]
-		gpp_in = gpp_in[961:1440, 321:680, :] * seconds_in_year
+		gpp_in = gpp_in[961:1440, 321:680, :] * scale_factor
 		gpp_yearly_aves = Array{Union{Missing, Float32}, 3}(undef, 480, 360, 21)
 		for i in 1:21
 			year_start = i*12-11
@@ -160,56 +175,28 @@ begin
 
 
 		end
-		yearly_spatial_ave_arrays[split(split(model, "/")[2], "_")[1]] = gpp_yearly_aves
+		yearly_spatial_ave_arrays[split(split(model, "/")[2], "_")[1]] = Dict("all" => gpp_yearly_aves)
 
-# 		# CREATE TREND ARRAY
-# 		df = DataFrame(years = convert.(Float32, years))
-# 		mach = machine
-# 		for (i, a) in collect(enumerate(eachslice(gpp_yearly_aves[:,:,:], dims=(1,2))))
-# 			if count(ismissing, a) == length(a)
-# 				trend_array[i] = missing
-# 				continue
-# 			elseif ismissing(sum(a))
-# 				trend_array[i] = missing
-# 			else
-# 				a = convert(Vector{Float32}, a)
-# 				mach = machine(ts_regr, df[:, [:years]], a)
-# 			end
-# 			fit!(mach, verbosity=0)
-# 			slope_array = pyconvert(Vector{Float32}, fitted_params(mach).coef)
-# 			trend_array[i] = slope_array[1]
-# 		end
-# 		trend_arrays[split(split(model, "/")[2], "_")[1]] = trend_array
+		# CREATE TREND ARRAY
+		# df = DataFrame(years = convert.(Float32, years))
+		# mach = machine
+		# for (i, a) in collect(enumerate(eachslice(gpp_yearly_aves[:,:,:], dims=(1,2))))
+		# 	if count(ismissing, a) == length(a)
+		# 		trend_array[i] = missing
+		# 		continue
+		# 	elseif ismissing(sum(a))
+		# 		trend_array[i] = missing
+		# 	else
+		# 		a = convert(Vector{Float32}, a)
+		# 		mach = machine(ts_regr, df[:, [:years]], a)
+		# 	end
+		# 	fit!(mach, verbosity=0)
+		# 	slope_array = pyconvert(Vector{Float32}, fitted_params(mach).coef)
+		# 	trend_array[i] = slope_array[1]
+		# end
+		# trend_arrays[split(split(model, "/")[2], "_")[1]] = trend_array
 	end
 end
-
-# ╔═╡ 1fe23621-df56-46bc-aa67-9b286ffb7440
-begin
-	# SAVE MEAN DATA
-	jldsave("./trendy_gpp_annual_spatial_mean.jld2"; 
-		cable_pop = yearly_spatial_ave_arrays["CABLE-POP"], 
-		classic = yearly_spatial_ave_arrays["CLASSIC"], 
-		clm50 = yearly_spatial_ave_arrays["CLM5.0"],
-		e3sm = yearly_spatial_ave_arrays["E3SM"],
-		edv3 = yearly_spatial_ave_arrays["EDv3"],
-		ibis = yearly_spatial_ave_arrays["IBIS"],
-	# 	isam = yearly_spatial_ave_arrays["ISAM"],
-		isba_ctrip = yearly_spatial_ave_arrays["ISBA-CTRIP"],
-		jsbach = yearly_spatial_ave_arrays["JSBACH"],
-		jules = yearly_spatial_ave_arrays["JULES"],
-		lpj_guess = yearly_spatial_ave_arrays["LPJ-GUESS"],
-		lpjml = yearly_spatial_ave_arrays["LPJmL"],
-		lpjwsl = yearly_spatial_ave_arrays["LPJwsl"],
-		lpx_bern = yearly_spatial_ave_arrays["LPX-Bern"],
-		ocn = yearly_spatial_ave_arrays["OCN"],
-		orchidee = yearly_spatial_ave_arrays["ORCHIDEE"],
-		sdgvm = yearly_spatial_ave_arrays["SDGVM"],
-		visit = yearly_spatial_ave_arrays["VISIT"],
-	)
-end
-
-# ╔═╡ 1cd5bd74-de88-48fa-9ddf-ec1bcac0b3d3
-heatmap(yearly_spatial_ave_arrays["VISIT"][:,:,11], colorrange=(0, 5))
 
 # ╔═╡ 00000000-0000-0000-0000-000000000001
 PLUTO_PROJECT_TOML_CONTENTS = """
@@ -240,7 +227,7 @@ PythonCall = "~0.9.20"
 PLUTO_MANIFEST_TOML_CONTENTS = """
 # This file is machine-generated - editing it directly is not advised
 
-julia_version = "1.10.3"
+julia_version = "1.10.4"
 manifest_format = "2.0"
 project_hash = "1323a8594d571b7d33f79f048a9ce6c958b437f5"
 
@@ -2365,10 +2352,8 @@ version = "3.5.0+0"
 # ╠═9d4627f5-8008-4de0-818d-5df3cf7d1636
 # ╠═1fe23621-df56-46bc-aa67-9b286ffb7440
 # ╠═fa14dba9-0042-412c-a83f-539cf262b99e
-# ╠═48395e72-6536-4b5a-870e-03817f909a1b
 # ╠═e6290957-05e5-4fa3-bf88-49627f457bbb
 # ╠═db7a286e-1597-4337-9725-738e6e804d1e
-# ╠═1cd5bd74-de88-48fa-9ddf-ec1bcac0b3d3
 # ╠═2c53930f-aa63-4142-baaf-871075be81d7
 # ╠═39994693-28b8-4bca-a731-beeffb7e2b18
 # ╟─00000000-0000-0000-0000-000000000001

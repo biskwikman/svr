@@ -1,5 +1,5 @@
 ### A Pluto.jl notebook ###
-# v0.19.42
+# v0.19.45
 
 using Markdown
 using InteractiveUtils
@@ -23,37 +23,168 @@ begin
 	versionlabelsize=50
 end
 
-# ╔═╡ 3c51f339-3c93-412c-9801-047236cbe7a5
+# ╔═╡ 2362b78a-0069-44ec-8505-8933adcb42f1
 begin
-	mask_file = "./AsiaMIP_qdeg_gosat2.byt"
-	regions_array = Array{UInt8}(undef, (480, 360))
-	read!(mask_file, regions_array)
-	reverse!(regions_array; dims=2)
-	heatmap(regions_array)
+	function create_charts(svr_data, trendy_data, title)
+		
+		trendy_array = []
+		trendy_array_Δ = []
+		for v in trendy_data
+			push!(trendy_array, v[2])
+			push!(trendy_array_Δ, v[2] .- mean(v[2][1:6]))
+		end
+		trendy_sd = std(trendy_array)
+		trendy_sd_Δ = std(trendy_array_Δ)
+
+		trendy_mean = mean(values(trendy_data))
+		
+		fig = Figure(size = (1600, 1600), figure_padding=30)
+	
+		ax1 = Axis(
+			fig[1,1],
+			title="GPP",
+			titlesize=titlesize,
+			ylabel=L"gC\; m^{2}\; day^{-1}",
+			xticklabelsize=ticklabelsize, yticklabelsize=ticklabelsize, xlabelsize=ticklabelsize, ylabelsize=ticklabelsize,
+			xlabel=L"Year",
+		)
+
+		ax2 = Axis(
+			fig[1,2],
+			title="σGPP",
+			titlesize=titlesize,
+			ylabel=L"gC\; m^{2}\; day^{-1}",
+			xticklabelsize=ticklabelsize, yticklabelsize=ticklabelsize, xlabelsize=ticklabelsize, ylabelsize=ticklabelsize,
+			xlabel=L"Year",
+		)
+
+		ax3 = Axis(
+			fig[2,1],
+			title="GPP Anomaly",
+			titlesize=titlesize,
+			ylabel=L"\Delta gC\; m^{2}\; day^{-1}",
+			xticklabelsize=ticklabelsize, yticklabelsize=ticklabelsize,
+			xlabelsize=ticklabelsize, ylabelsize=ticklabelsize,
+			xlabel=L"Year",
+		)
+
+		ax4 = Axis(
+			fig[2,2],
+			title="σGPP Anomaly",
+			titlesize=titlesize,
+			ylabel=L"\Delta gC\; m^{2}\; day^{-1}",
+			xticklabelsize=ticklabelsize, yticklabelsize=ticklabelsize,
+			xlabelsize=ticklabelsize, ylabelsize=ticklabelsize,
+			xlabel=L"Year",
+		)
+
+		Label(fig[0,:], title, fontsize=55)
+	
+		for (i, data) in enumerate(trendy_data)
+			model_name = data[1]
+			model_aves = data[2]
+	
+			six_year_ave = mean(model_aves[1:6])
+			
+			lines!(ax1, years, model_aves, linewidth=3, alpha=0.3, color=:gray)
+			lines!(ax3, years, model_aves .- six_year_ave, linewidth=3, alpha=0.3, color=:gray)
+		end
+
+		lines!(ax1, years, svr_data["061"], linewidth=7, color=colormap[3])
+		lines!(ax1, years, svr_data["006"], linewidth=7, color=colormap[2])
+		lines!(ax1, 2000:2015, svr_data["005"], linewidth=7, color=colormap[1])
+
+		lines!(ax2, years, svr_data["061"], linewidth=7, color=colormap[3])
+		lines!(ax2, years, svr_data["006"], linewidth=7, color=colormap[2])
+		lines!(ax2, 2000:2015, svr_data["005"], linewidth=7, color=colormap[1])
+
+		lines!(ax2, years, trendy_mean, linewidth=8, color=:black, alpha=0.7, linestyle=(:dash, 1))
+		band!(ax2, years, trendy_mean - trendy_sd, trendy_mean + trendy_sd, color=(:gray, 0.3))
+		
+		lines!(ax3, years, svr_data["061"] .- mean(svr_data["061"][1:6]), linewidth=7, color=colormap[3])
+		lines!(ax3, years, svr_data["006"] .- mean(svr_data["006"][1:6]), linewidth=7, color=colormap[2])
+		lines!(ax3, 2000:2015, svr_data["005"] .- mean(svr_data["005"][1:6]), linewidth=7, color=colormap[1])
+
+		lines!(ax4, years, svr_data["061"] .- mean(svr_data["061"][1:6]), linewidth=7, color=colormap[3])
+		lines!(ax4, years, svr_data["006"] .- mean(svr_data["006"][1:6]), linewidth=7, color=colormap[2])
+		lines!(ax4, 2000:2015, svr_data["005"] .- mean(svr_data["005"][1:6]), linewidth=7, color=colormap[1])
+
+		lines!(ax4, years, trendy_mean .- mean(trendy_mean[1:6]), linewidth=8, color=:black, alpha=0.7, linestyle=(:dash, 1))
+		band!(ax4, years, trendy_mean .- mean(trendy_mean[1:6]) - trendy_sd_Δ, trendy_mean .- mean(trendy_mean[1:6]) + trendy_sd_Δ, color=(:gray, 0.3))
+	
+		for (iv, ver) in enumerate(["V5", "V6", "V6.1"])
+			text!(ax1, 0, 1, text=ver, color=colormap[iv], font=:bold, fontsize=versionlabelsize, align=(:left,:top), space=:relative,
+			offset=((iv-1)*80, 0))
+		end
+		
+		return fig
+	end
 end
 
-# ╔═╡ 5cb226c5-31e5-4b6f-80a4-62a03227f5b7
-function apply_weights(yearly_ave_spatial)
-# begin
+# ╔═╡ 3c51f339-3c93-412c-9801-047236cbe7a5
+begin
+	regions_file = "./AsiaMIP_qdeg_gosat2.byt"
+	regions_array = Array{UInt8}(undef, (480, 360))
+	read!(regions_file, regions_array)
+	reverse!(regions_array; dims=2)
+	
+	siberia_idx = findall(x -> x in(range(1,4)), regions_array)
+	easia_idx = findall(x -> x == 6, regions_array)
+	sasia_idx = findall(x -> x == 7, regions_array)
+	seasia_idx = findall(x -> x in(range(8,9)), regions_array)
+	regions_idx = [siberia_idx, easia_idx, sasia_idx, seasia_idx]
+
+	regions = Dict(
+		"East Asia" => easia_idx,
+		"Southeast Asia" => seasia_idx,
+		"South Asia" => sasia_idx,
+		"Siberia" => siberia_idx,
+	)
+end
+
+# ╔═╡ c5c44d74-6646-415a-9960-148102d8a2c5
+# Areas data
+begin
 	areas_file = "./AsiaMIP_qdeg_area.flt"
 	areas = Array{Float32}(undef, (480, 360))
 	read!(areas_file, areas)
 	areas = convert(Array{Union{Missing, Float32}}, areas)
 	reverse!(areas; dims=2)
-	replace!(areas, -9999.0 => missing)
+	replace!(areas, -9999.0 => missing); nothing
+end
 
+# ╔═╡ 5cb226c5-31e5-4b6f-80a4-62a03227f5b7
+function apply_weights(yearly_ave_spatial, areas, regions)
 	result = areas .* yearly_ave_spatial
 	missing_areas = findall(x -> ismissing(x), result)
 	areas[missing_areas] .= missing
-	total_area = sum(skipmissing(areas))
 	
-	return sum(skipmissing(result)) / total_area
+	total_area = sum(skipmissing(areas))
+	mean_all = sum(skipmissing(result)) / total_area
+	
+	se_asia_area = sum(skipmissing(areas[regions["Southeast Asia"]]))
+	mean_se_asia = sum(skipmissing(result[regions["Southeast Asia"]])) / se_asia_area
+	
+	e_asia_area = sum(skipmissing(areas[regions["East Asia"]]))
+	mean_e_asia = sum(skipmissing(result[regions["East Asia"]])) / e_asia_area
+
+	siberia_area = sum(skipmissing(areas[regions["Siberia"]]))
+	mean_siberia = sum(skipmissing(result[regions["Siberia"]])) / siberia_area
+
+	s_asia_area = sum(skipmissing(areas[regions["South Asia"]]))
+	mean_s_asia = sum(skipmissing(result[regions["South Asia"]])) / s_asia_area
+	
+	return (mean_all, mean_se_asia, mean_e_asia, mean_siberia, mean_s_asia)
 end
 
 # ╔═╡ ca41c058-9feb-4650-a871-3f5a82979c0b
 # SVR DATA
 begin
-	svr_aves_c61::Array{Float32} = []
+	svr_aves_c61::Vector{Float32} = []
+	svr_aves_c61_se_asia::Vector{Float32} = []
+	svr_aves_c61_e_asia::Vector{Float32} = []
+	svr_aves_c61_siberia::Vector{Float32} = []
+	svr_aves_c61_s_asia::Vector{Float32} = []
 	for (i, year) in enumerate(years)
 		yearly_ave_spatial = Array{Float32}(undef, (480, 360))
 		read!("./out_c61/YEAR_cor/GPP.ALL.209.$year.flt", yearly_ave_spatial)
@@ -61,13 +192,20 @@ begin
 		replace!(yearly_ave_spatial, -9999.0 => missing)
 		reverse!(yearly_ave_spatial; dims=2)
 
-		yearly_ave = apply_weights(yearly_ave_spatial)
+		yearly_ave = apply_weights(yearly_ave_spatial, areas, regions)
 
-		push!(svr_aves_c61, yearly_ave)
-		# push!(svr_aves_c61, mean(skipmissing(yearly_ave_spatial)))
+		push!(svr_aves_c61, yearly_ave[1])
+		push!(svr_aves_c61_se_asia, yearly_ave[2])
+		push!(svr_aves_c61_e_asia, yearly_ave[3])
+		push!(svr_aves_c61_siberia, yearly_ave[4])
+		push!(svr_aves_c61_s_asia, yearly_ave[5])
 	end
 
-	svr_aves_c06::Array{Float32} = []
+	svr_aves_c06::Vector{Float32} = []
+	svr_aves_c06_se_asia::Vector{Float32} = []
+	svr_aves_c06_e_asia::Vector{Float32} = []
+	svr_aves_c06_siberia::Vector{Float32} = []
+	svr_aves_c06_s_asia::Vector{Float32} = []
 	for (i, year) in enumerate(years)
 		yearly_ave_spatial = Array{Float32}(undef, (480, 360))
 		read!("./out_c06/YEAR_cor/GPP.ALL.AVERAGE.$year.flt", yearly_ave_spatial)
@@ -75,13 +213,20 @@ begin
 		replace!(yearly_ave_spatial, -9999.0 => missing)
 		reverse!(yearly_ave_spatial; dims=2)
 
-		yearly_ave = apply_weights(yearly_ave_spatial)
+		yearly_ave = apply_weights(yearly_ave_spatial, areas, regions)
 		
-		push!(svr_aves_c06, yearly_ave)
-		# push!(svr_aves_c06, mean(skipmissing(yearly_ave)))
+		push!(svr_aves_c06, yearly_ave[1])
+		push!(svr_aves_c06_se_asia, yearly_ave[2])
+		push!(svr_aves_c06_e_asia, yearly_ave[3])
+		push!(svr_aves_c06_siberia, yearly_ave[4])
+		push!(svr_aves_c06_s_asia, yearly_ave[5])
 	end
 
-	svr_aves_c05::Array{Float32} = []
+	svr_aves_c05::Vector{Float32} = []
+	svr_aves_c05_se_asia::Vector{Float32} = []
+	svr_aves_c05_e_asia::Vector{Float32} = []
+	svr_aves_c05_siberia::Vector{Float32} = []
+	svr_aves_c05_s_asia::Vector{Float32} = []
 	for (i, year) in enumerate(2000:2015)
 		yearly_ave_spatial = Array{Float32}(undef, (480, 360))
 		read!("./out_c05/YEAR_cor/GPP.ALL.AVERAGE.$year.flt", yearly_ave_spatial)
@@ -89,12 +234,39 @@ begin
 		replace!(yearly_ave_spatial, -999.0 => missing)
 		reverse!(yearly_ave_spatial; dims=2)
 
-		yearly_ave = apply_weights(yearly_ave_spatial)
+		yearly_ave = apply_weights(yearly_ave_spatial, areas, regions)
 		
-		push!(svr_aves_c05, yearly_ave)
-		# push!(svr_aves_c05, mean(skipmissing(yearly_ave_spatial)))
+		push!(svr_aves_c05, yearly_ave[1])
+		push!(svr_aves_c05_se_asia, yearly_ave[2])
+		push!(svr_aves_c05_e_asia, yearly_ave[3])
+		push!(svr_aves_c05_siberia, yearly_ave[4])
+		push!(svr_aves_c05_s_asia, yearly_ave[5])
 	end
-	
+	svr_data_asia = Dict(
+		"005" => svr_aves_c05,
+		"006" => svr_aves_c06,
+		"061" => svr_aves_c61,
+	)
+	svr_data_e_asia = Dict(
+		"005" => svr_aves_c05_e_asia,
+		"006" => svr_aves_c06_e_asia,
+		"061" => svr_aves_c61_e_asia,
+	)
+	svr_data_se_asia = Dict(
+		"005" => svr_aves_c05_se_asia,
+		"006" => svr_aves_c06_se_asia,
+		"061" => svr_aves_c61_se_asia,
+	)
+	svr_data_siberia = Dict(
+		"005" => svr_aves_c05_siberia,
+		"006" => svr_aves_c06_siberia,
+		"061" => svr_aves_c61_siberia,
+	)
+	svr_data_s_asia = Dict(
+		"005" => svr_aves_c05_s_asia,
+		"006" => svr_aves_c06_s_asia,
+		"061" => svr_aves_c61_s_asia,
+	)
 end
 
 # ╔═╡ 6c350803-d9f5-495f-8731-0c7c9b86bf8a
@@ -125,101 +297,79 @@ end
 begin
 	f = jldopen("./trendy_gpp_annual_spatial_mean.jld2")
 	models_aves = Dict()
+	se_asia_aves = Dict()
+	e_asia_aves = Dict()
+	siberia_aves = Dict()
+	s_asia_aves = Dict()
 	for model in models
-		model_annual_ave::Array{Float32} = []
+		model_ave_all::Vector{Float32} = []
+		model_ave_se_asia::Vector{Float32} = []
+		model_ave_e_asia::Vector{Float32} = []
+		model_ave_siberia::Vector{Float32} = []
+		model_ave_s_asia::Vector{Float32} = []
 		for year in 1:21
 			yearly_ave_spatial = f[model][:,:,year]
-			yearly_ave = apply_weights(yearly_ave_spatial)
+			
+			yearly_ave_spatial_weighted = apply_weights(yearly_ave_spatial, areas, regions)
 
-			push!(model_annual_ave, yearly_ave)
-			# push!(model_annual_ave, mean(skipmissing(f[model][:,:,year])))
-			models_aves[model] = model_annual_ave
+			push!(model_ave_all, yearly_ave_spatial_weighted[1])
+			push!(model_ave_se_asia, yearly_ave_spatial_weighted[2])
+			push!(model_ave_e_asia, yearly_ave_spatial_weighted[3])
+			push!(model_ave_siberia, yearly_ave_spatial_weighted[4])
+			push!(model_ave_s_asia, yearly_ave_spatial_weighted[5])
+			
+			models_aves[model] = model_ave_all
+			se_asia_aves[model] = model_ave_se_asia
+			e_asia_aves[model] = model_ave_e_asia
+			siberia_aves[model] = model_ave_siberia
+			s_asia_aves[model] = model_ave_s_asia
 		end
 	end
 end
 
 # ╔═╡ e3cd7aa4-fb4f-4e45-9c46-7d41885e2a0a
 begin
-	colorrange=(0.0, 4.0)
-	yearly_ave_spatial = Array{Float32}(undef, (480, 360))
-	read!("./out_c05/YEAR_cor/GPP.ALL.AVERAGE.2010.flt", yearly_ave_spatial)
-	yearly_ave_spatial = convert(Array{Union{Missing, Float32}}, yearly_ave_spatial)
-	replace!(yearly_ave_spatial, -9999.0 => missing)
-	replace!(yearly_ave_spatial, -999.0 => missing)
-	reverse!(yearly_ave_spatial; dims=2)
+	function create_maps()
+		colorrange=(0.0, 4.0)
+		yearly_ave_spatial = Array{Float32}(undef, (480, 360))
+		read!("./out_c05/YEAR_cor/GPP.ALL.AVERAGE.2010.flt", yearly_ave_spatial)
+		yearly_ave_spatial = convert(Array{Union{Missing, Float32}}, yearly_ave_spatial)
+		replace!(yearly_ave_spatial, -9999.0 => missing)
+		replace!(yearly_ave_spatial, -999.0 => missing)
+		reverse!(yearly_ave_spatial; dims=2)
+		
+		mfig = Figure(size=(800, 500))
+		ax1 = Axis(mfig[1,1], aspect=DataAspect(), title="IBIS")
+		ax2 = Axis(mfig[1,2], aspect=DataAspect(), title="C05")
+		heatmap!(ax1, f["visit"][:,:,11], colorrange=colorrange)
+		hm = heatmap!(ax2, yearly_ave_spatial/3, colorrange=colorrange)
+		
+		Colorbar(
+			mfig[1,3], hm,
+			height=Relative(2/4)
+		)
 	
-	mfig = Figure(size=(800, 500))
-	ax1 = Axis(mfig[1,1], aspect=DataAspect(), title="VISIT")
-	ax2 = Axis(mfig[1,2], aspect=DataAspect(), title="C05")
-	heatmap!(ax1, f["visit"][:,:,11], colorrange=colorrange)
-	hm = heatmap!(ax2, yearly_ave_spatial/3, colorrange=colorrange)
-	
-	Colorbar(
-		mfig[1,3], hm,
-		# halign=:center, vertical=false,
-		# ticklabelsize=ticklabelsize, labelsize=colorbarlabelsize, label=colormap_label,
-		# ticks=ticks,
-		# size=50,
-		height=Relative(2/4)
-	)
-
-	mfig
+		return mfig
+	end
 end
 
-# ╔═╡ 2362b78a-0069-44ec-8505-8933adcb42f1
-begin
-	fig = Figure(size = (1000, 800))
+# ╔═╡ c991017a-24f1-44e6-ab42-003a68d43ce3
+create_maps()
 
-	ax = Axis(
-		fig[1,1],
-		title="GPP: Variation from '00-'05 mean",
-		titlesize=titlesize,
-		ylabel=L"%",
-		xticklabelsize=ticklabelsize, yticklabelsize=ticklabelsize, xlabelsize=ticklabelsize, ylabelsize=ticklabelsize,
-		xlabel=L"Year"
-	)
+# ╔═╡ efcfbf46-d378-4980-99e3-074a2376b16e
+create_charts(svr_data_asia, models_aves, "Asia")
 
-	for data in models_aves
-		model_name = data[1]
-		model_aves = data[2]
+# ╔═╡ 8b5fbe6e-066d-4640-89f4-de184e57f40d
+create_charts(svr_data_e_asia, e_asia_aves, "East Asia")
 
-		six_year_ave = mean(model_aves[1:6])
-	
-		lines!(ax, years, model_aves ./ six_year_ave, linewidth=3, alpha=0.3)
-	end
-	
-	lines!(ax, years, svr_aves_c61 ./ mean(svr_aves_c61[1:6]), linewidth=7, color=colormap[3])
-	lines!(ax, years, svr_aves_c06 ./ mean(svr_aves_c06[1:6]), linewidth=7, color=colormap[2])
-	lines!(ax, 2000:2015, svr_aves_c05 ./ mean(svr_aves_c05[1:6]), linewidth=7, color=colormap[1])
+# ╔═╡ 8f9ad292-c685-4ee7-a115-1bc5ada19b17
+create_charts(svr_data_se_asia, se_asia_aves, "Southeast Asia")
 
-	for (iv, ver) in enumerate(["V5", "V6", "V6.1"])
-		text!(ax, 0, 1, text=ver, color=colormap[iv], font=:bold, fontsize=versionlabelsize, align=(:left,:top), space=:relative,
-		offset=((iv-1)*80, 0))
-	end
-	
-	# text!(ax, 2010, svr_aves_c06[11], text="V6", color=colormap[2], fontsize=versionlabelsize, align=(:center,:bottom))
-	
-	# text!(ax, 2020, svr_aves_c61[end], text="V6.1", color=colormap[3], fontsize=versionlabelsize, align=(:right,:top))
-	
-	fig
-end
+# ╔═╡ e8836197-7ee9-451b-a142-91a3ca459fe3
+create_charts(svr_data_siberia, siberia_aves, "Siberia")
 
-# ╔═╡ ac1b9795-6c6b-465e-9096-1ecd4c35b5ed
-begin
-	c61_variance = extrema(svr_aves_c61/2)[2] - extrema(svr_aves_c61/2)[1]
-	c05_variance = extrema(svr_aves_c05)[2] - extrema(svr_aves_c05)[1]
-
-	trendy_variance = []
-	for data in models_aves
-		model_aves = data[2]
-		model_variance = extrema(model_aves)[2] - extrema(model_aves)[1]
-		println(model_variance)
-		push!(trendy_variance, model_variance)
-	end
-
-	# println(mean(trendy_variance))
-	
-end
+# ╔═╡ b3e17fa8-bd0f-4ea4-b650-18e3a4dcc767
+create_charts(svr_data_s_asia, s_asia_aves, "South Asia")
 
 # ╔═╡ 00000000-0000-0000-0000-000000000001
 PLUTO_PROJECT_TOML_CONTENTS = """
@@ -239,7 +389,7 @@ StatsBase = "~0.34.3"
 PLUTO_MANIFEST_TOML_CONTENTS = """
 # This file is machine-generated - editing it directly is not advised
 
-julia_version = "1.10.3"
+julia_version = "1.10.4"
 manifest_format = "2.0"
 project_hash = "9e2f7912e059a3d2750eccca5e965cfd5d88d7ac"
 
@@ -1624,11 +1774,17 @@ version = "3.5.0+0"
 
 # ╔═╡ Cell order:
 # ╠═8b3d72d8-137e-11ef-3ad4-01bbddb651b1
+# ╠═c991017a-24f1-44e6-ab42-003a68d43ce3
 # ╠═e3cd7aa4-fb4f-4e45-9c46-7d41885e2a0a
+# ╠═efcfbf46-d378-4980-99e3-074a2376b16e
+# ╠═8b5fbe6e-066d-4640-89f4-de184e57f40d
+# ╠═8f9ad292-c685-4ee7-a115-1bc5ada19b17
+# ╠═e8836197-7ee9-451b-a142-91a3ca459fe3
+# ╠═b3e17fa8-bd0f-4ea4-b650-18e3a4dcc767
 # ╠═2362b78a-0069-44ec-8505-8933adcb42f1
-# ╠═ac1b9795-6c6b-465e-9096-1ecd4c35b5ed
 # ╠═8e2feea6-e0e7-4d46-bee9-5209846761de
 # ╠═3c51f339-3c93-412c-9801-047236cbe7a5
+# ╠═c5c44d74-6646-415a-9960-148102d8a2c5
 # ╠═5cb226c5-31e5-4b6f-80a4-62a03227f5b7
 # ╠═ca41c058-9feb-4650-a871-3f5a82979c0b
 # ╠═9e8e936e-da5d-42df-b1e6-31b7d967ec52

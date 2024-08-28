@@ -1,5 +1,5 @@
 ### A Pluto.jl notebook ###
-# v0.19.42
+# v0.19.43
 
 using Markdown
 using InteractiveUtils
@@ -20,26 +20,29 @@ end
 # ╔═╡ af4fe31d-bfa6-48af-9ead-08583f7fe626
 begin
 	function create_trend_array(years, yearly_aves::AbstractArray, ts_regr)
-		# years = 2000:2020
-
 		df = DataFrame(years = convert.(Float32, years))
 		trend_array = Array{Union{Missing, Float32}}(undef, (480, 360, 3))
 
 		mach = machine
-	
+
+		first=0
+		second = 0
+		third = 0
 		for (i, a) in collect(enumerate(eachslice(yearly_aves[:,:,:,:], dims=(1,2,4))))
+			# something wrong with this condition
 			if count(ismissing, a) == length(a)
+				first += 1
 				trend_array[i] = missing
 				continue
-				if years[end] < 2015
-					if count(!ismissing, a) == 16 && count(ismissing, a[17:21]) == 5 
-						a = convert(Vector{Float32}, collect(skipmissing(a)))
-						mach = machine(ts_regr, df[1:16, [:years]], a)
-					end
-				end
-			elseif ismissing(sum(a))
-				trend_array[i] = missing
+			elseif years[end] > 2015 && count(!ismissing, a) == 16 && count(ismissing, a[17:21]) == 5
+				second += 1
+				a = convert(Vector{Float32}, collect(skipmissing(a)))
+				mach = machine(ts_regr, df[1:16, [:years]], a)
+			# elseif ismissing(sum(a))
+			# 	println("elseif")
+			# 	trend_array[i] = missing
 			else
+				third += 1
 				a = convert(Vector{Float32}, a)
 				mach = machine(ts_regr, df[:, [:years]], a)
 			end
@@ -47,20 +50,18 @@ begin
 			slope_array = pyconvert(Vector{Float32}, fitted_params(mach).coef)
 			trend_array[i] = slope_array[1]
 		end
+		println(first)
+		println(second)
+		println(third)
 		return trend_array
 	end
-	# trend_array = create_trend_array(yearly_aves, ts_regr)
 end
 
 # ╔═╡ cb19c8e6-528a-4f73-838d-034475f6d6c3
 begin
-	# product = "MOD15A2H"
-	# dataset = "Lai"
-
 	function create_all_versions(years)
 		# product == "MOD11A2" ? unit = "degC" : unit = "NA"
 		versions = ["c05"=>"AVERAGE", "c06"=>"209", "c61"=>"AVERAGE"]
-		# years = 2000:2020
 		
 		# Need to extend this array for years
 		all_versions = Array{Union{Missing, Float32}}(undef, (480, 360, length(years), 3))
@@ -91,14 +92,24 @@ end
 
 # ╔═╡ 4dec2edb-805b-4d17-8904-57ec7b8f5d47
 begin
-	years = 2000:2015
+	years = 2000:2020
 end
 
 # ╔═╡ f2c4d21e-dc92-4404-bfa6-e1a2ea23aa8b
 begin
 	trend_arrays = Dict()
 	yearly_aves = create_all_versions(years)
+
+	miss_mask = Array{Union{Float32, Missing}, 2}(undef, 480, 360)
+	miss_mask .= 1
+	for v in 1:3
+		for i in 1:16
+			miss_mask = miss_mask .* yearly_aves[:,:,i,v]
+			miss_mask = miss_mask ./ miss_mask
+		end
+	end
 	trend_array = create_trend_array(years, yearly_aves, ts_regr)
+	trend_array = trend_array .* miss_mask
 	trend_arrays["GPP"] = trend_array;
 	nothing
 end
@@ -116,9 +127,14 @@ begin
 end
 
 # ╔═╡ 1ee9524e-272c-4cf4-b61c-a6fbf8443893
-heatmap(trend_arrays["GPP"][:,:,3])
+begin
+heatmap(trend_arrays["GPP"][:,:,1])
 
-# heatmap(yearly_aves[:,:,15,1])
+# trend_array[3]
+end
+
+# ╔═╡ 050b067c-e115-47e8-82ea-9f98e7a634e5
+count(ismissing, trend_array[:,:,1])
 
 # ╔═╡ 1cc54307-1724-4cde-b040-ba97f29d6c66
 html"""<style>
@@ -157,7 +173,7 @@ PythonCall = "~0.9.15"
 PLUTO_MANIFEST_TOML_CONTENTS = """
 # This file is machine-generated - editing it directly is not advised
 
-julia_version = "1.10.3"
+julia_version = "1.10.4"
 manifest_format = "2.0"
 project_hash = "68bfa10fb93bb23266660b13fa9864cb7a6f9512"
 
@@ -2128,6 +2144,7 @@ version = "3.5.0+0"
 # ╔═╡ Cell order:
 # ╠═6ca4d980-cade-11ee-3a78-89474f9e9cec
 # ╠═1ee9524e-272c-4cf4-b61c-a6fbf8443893
+# ╠═050b067c-e115-47e8-82ea-9f98e7a634e5
 # ╠═af4fe31d-bfa6-48af-9ead-08583f7fe626
 # ╠═cb19c8e6-528a-4f73-838d-034475f6d6c3
 # ╠═f2c4d21e-dc92-4404-bfa6-e1a2ea23aa8b
