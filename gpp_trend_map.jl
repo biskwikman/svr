@@ -1,5 +1,5 @@
 ### A Pluto.jl notebook ###
-# v0.19.45
+# v0.19.46
 
 using Markdown
 using InteractiveUtils
@@ -40,7 +40,7 @@ begin
 	dataset = "gpp"
 
 	colorrange = (-0.05, 0.05)
-	colorgradient=cgrad(colormap, 11, categorical=true)
+	colorgradient=cgrad(colormap, 11, categorical=true, rev=true)
 	colorgradient_diff = cgrad(colormap_diff, 11, categorical=true, rev=true)
 	ticks=[colorrange[1], colorrange[1]/2, 0, colorrange[2], colorrange[2]/2]
 	tickformat = x -> string.(x)
@@ -92,7 +92,6 @@ begin
 		for (i, (ver, ax_loc)) in enumerate(zip(["V5", "V6", "V6.1"], [fig[1,1], fig[1,2], fig[2,1]]))
 			ver == "V5" ? end_year = 2015 : end_year = years[end]
 			ax = Axis(ax_loc, title=ver*": 2000-$(end_year)",
-				# dest = "+proj=longlat",
 				xticklabelsvisible=false,
 				yticklabelsvisible=false,
 				xticksvisible=false,
@@ -100,8 +99,6 @@ begin
 				limits=((60, 180), (-10, 80)),
 				titlesize=titlesize,
 				aspect=DataAspect()
-				# xgridvisible=false,
-				# ygridvisible=false,
 			)
 			# hidedecorations!(ax)
 			poly!(ax, GeoMakie.land(), color=:lightgray)
@@ -227,7 +224,7 @@ PlutoUI = "~0.7.59"
 PLUTO_MANIFEST_TOML_CONTENTS = """
 # This file is machine-generated - editing it directly is not advised
 
-julia_version = "1.10.4"
+julia_version = "1.10.5"
 manifest_format = "2.0"
 project_hash = "16c90545615455d781617f6a5280a0208c8a9a62"
 
@@ -1747,7 +1744,7 @@ version = "0.15.1+0"
 [[deps.libblastrampoline_jll]]
 deps = ["Artifacts", "Libdl"]
 uuid = "8e850b90-86db-534c-a0d3-1478176c7d93"
-version = "5.8.0+1"
+version = "5.11.0+0"
 
 [[deps.libfdk_aac_jll]]
 deps = ["Artifacts", "JLLWrappers", "Libdl", "Pkg"]

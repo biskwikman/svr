@@ -1,5 +1,5 @@
 ### A Pluto.jl notebook ###
-# v0.19.45
+# v0.19.46
 
 using Markdown
 using InteractiveUtils
@@ -38,7 +38,9 @@ begin
 
 		trendy_mean = mean(values(trendy_data))
 		
-		fig = Figure(size = (1600, 1600), figure_padding=30)
+		fig = Figure(size = (1600, 1600),
+			figure_padding=30,
+		)
 	
 		ax1 = Axis(
 			fig[1,1],
@@ -46,16 +48,17 @@ begin
 			titlesize=titlesize,
 			ylabel=L"gC\; m^{2}\; day^{-1}",
 			xticklabelsize=ticklabelsize, yticklabelsize=ticklabelsize, xlabelsize=ticklabelsize, ylabelsize=ticklabelsize,
-			xlabel=L"Year",
+			# xlabel=L"Year",
 		)
 
 		ax2 = Axis(
 			fig[1,2],
 			title="σGPP",
 			titlesize=titlesize,
-			ylabel=L"gC\; m^{2}\; day^{-1}",
+			# ylabel=L"gC\; m^{2}\; day^{-1}",
 			xticklabelsize=ticklabelsize, yticklabelsize=ticklabelsize, xlabelsize=ticklabelsize, ylabelsize=ticklabelsize,
-			xlabel=L"Year",
+			# xlabel=L"Year",
+			# yticklabelsvisible=false,
 		)
 
 		ax3 = Axis(
@@ -72,11 +75,17 @@ begin
 			fig[2,2],
 			title="σGPP Anomaly",
 			titlesize=titlesize,
-			ylabel=L"\Delta gC\; m^{2}\; day^{-1}",
+			# ylabel=L"\Delta gC\; m^{2}\; day^{-1}",
 			xticklabelsize=ticklabelsize, yticklabelsize=ticklabelsize,
 			xlabelsize=ticklabelsize, ylabelsize=ticklabelsize,
 			xlabel=L"Year",
+			# yticklabelsvisible=false,
 		)
+
+		linkyaxes!(ax1, ax2)
+		linkyaxes!(ax3, ax4)
+		linkxaxes!(ax1, ax3)
+		linkxaxes!(ax2, ax4)
 
 		Label(fig[0,:], title, fontsize=55)
 	
@@ -389,7 +398,7 @@ StatsBase = "~0.34.3"
 PLUTO_MANIFEST_TOML_CONTENTS = """
 # This file is machine-generated - editing it directly is not advised
 
-julia_version = "1.10.4"
+julia_version = "1.10.5"
 manifest_format = "2.0"
 project_hash = "9e2f7912e059a3d2750eccca5e965cfd5d88d7ac"
 
@@ -1717,7 +1726,7 @@ version = "0.15.1+0"
 [[deps.libblastrampoline_jll]]
 deps = ["Artifacts", "Libdl"]
 uuid = "8e850b90-86db-534c-a0d3-1478176c7d93"
-version = "5.8.0+1"
+version = "5.11.0+0"
 
 [[deps.libfdk_aac_jll]]
 deps = ["Artifacts", "JLLWrappers", "Libdl", "Pkg"]
