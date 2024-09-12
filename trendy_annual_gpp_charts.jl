@@ -38,49 +38,44 @@ begin
 
 		trendy_mean = mean(values(trendy_data))
 		
-		fig = Figure(size = (1600, 1600),
+		fig = Figure(
+			size = (1400, 1600),
 			figure_padding=30,
 		)
+
+		kwargs = (; titlesize=titlesize,xticklabelsize=ticklabelsize, yticklabelsize=ticklabelsize, xlabelsize=ticklabelsize, ylabelsize=ticklabelsize)
 	
 		ax1 = Axis(
-			fig[1,1],
+			fig[1,1];
+			kwargs...,
 			title="GPP",
-			titlesize=titlesize,
 			ylabel=L"gC\; m^{2}\; day^{-1}",
-			xticklabelsize=ticklabelsize, yticklabelsize=ticklabelsize, xlabelsize=ticklabelsize, ylabelsize=ticklabelsize,
-			# xlabel=L"Year",
 		)
 
 		ax2 = Axis(
-			fig[1,2],
+			fig[1,2];
+			kwargs...,
 			title="σGPP",
-			titlesize=titlesize,
-			# ylabel=L"gC\; m^{2}\; day^{-1}",
-			xticklabelsize=ticklabelsize, yticklabelsize=ticklabelsize, xlabelsize=ticklabelsize, ylabelsize=ticklabelsize,
-			# xlabel=L"Year",
-			# yticklabelsvisible=false,
 		)
 
 		ax3 = Axis(
-			fig[2,1],
+			fig[2,1];
+			kwargs...,
 			title="GPP Anomaly",
-			titlesize=titlesize,
 			ylabel=L"\Delta gC\; m^{2}\; day^{-1}",
-			xticklabelsize=ticklabelsize, yticklabelsize=ticklabelsize,
-			xlabelsize=ticklabelsize, ylabelsize=ticklabelsize,
 			xlabel=L"Year",
 		)
 
 		ax4 = Axis(
-			fig[2,2],
+			fig[2,2];
+			kwargs...,
 			title="σGPP Anomaly",
-			titlesize=titlesize,
-			# ylabel=L"\Delta gC\; m^{2}\; day^{-1}",
-			xticklabelsize=ticklabelsize, yticklabelsize=ticklabelsize,
-			xlabelsize=ticklabelsize, ylabelsize=ticklabelsize,
 			xlabel=L"Year",
-			# yticklabelsvisible=false,
 		)
+
+		colsize!(fig.layout, 1, Aspect(1, 1.2))
+		colsize!(fig.layout, 2, Aspect(2, 1.2))
+		colgap!(fig.layout, 1, 35)
 
 		linkyaxes!(ax1, ax2)
 		linkyaxes!(ax3, ax4)
@@ -99,13 +94,13 @@ begin
 			lines!(ax3, years, model_aves .- six_year_ave, linewidth=3, alpha=0.3, color=:gray)
 		end
 
-		lines!(ax1, years, svr_data["061"], linewidth=7, color=colormap[3])
-		lines!(ax1, years, svr_data["006"], linewidth=7, color=colormap[2])
-		lines!(ax1, 2000:2015, svr_data["005"], linewidth=7, color=colormap[1])
+		for (i, v) in enumerate(["005", "006", "061"])
+		years = v == "005" ? (2000:2015) : (2000:2020)
+			kwargs = (; linewidth=7, color=colormap[i])
 
-		lines!(ax2, years, svr_data["061"], linewidth=7, color=colormap[3])
-		lines!(ax2, years, svr_data["006"], linewidth=7, color=colormap[2])
-		lines!(ax2, 2000:2015, svr_data["005"], linewidth=7, color=colormap[1])
+			lines!(ax1, years, svr_data[v]; kwargs...)
+			lines!(ax2, years, svr_data[v]; kwargs...)
+		end
 
 		lines!(ax2, years, trendy_mean, linewidth=8, color=:black, alpha=0.7, linestyle=(:dash, 1))
 		band!(ax2, years, trendy_mean - trendy_sd, trendy_mean + trendy_sd, color=(:gray, 0.3))
@@ -125,7 +120,7 @@ begin
 			text!(ax1, 0, 1, text=ver, color=colormap[iv], font=:bold, fontsize=versionlabelsize, align=(:left,:top), space=:relative,
 			offset=((iv-1)*80, 0))
 		end
-		
+		resize_to_layout!(fig)
 		return fig
 	end
 end
@@ -335,35 +330,6 @@ begin
 		end
 	end
 end
-
-# ╔═╡ e3cd7aa4-fb4f-4e45-9c46-7d41885e2a0a
-begin
-	function create_maps()
-		colorrange=(0.0, 4.0)
-		yearly_ave_spatial = Array{Float32}(undef, (480, 360))
-		read!("./out_c05/YEAR_cor/GPP.ALL.AVERAGE.2010.flt", yearly_ave_spatial)
-		yearly_ave_spatial = convert(Array{Union{Missing, Float32}}, yearly_ave_spatial)
-		replace!(yearly_ave_spatial, -9999.0 => missing)
-		replace!(yearly_ave_spatial, -999.0 => missing)
-		reverse!(yearly_ave_spatial; dims=2)
-		
-		mfig = Figure(size=(800, 500))
-		ax1 = Axis(mfig[1,1], aspect=DataAspect(), title="IBIS")
-		ax2 = Axis(mfig[1,2], aspect=DataAspect(), title="C05")
-		heatmap!(ax1, f["visit"][:,:,11], colorrange=colorrange)
-		hm = heatmap!(ax2, yearly_ave_spatial/3, colorrange=colorrange)
-		
-		Colorbar(
-			mfig[1,3], hm,
-			height=Relative(2/4)
-		)
-	
-		return mfig
-	end
-end
-
-# ╔═╡ c991017a-24f1-44e6-ab42-003a68d43ce3
-create_maps()
 
 # ╔═╡ efcfbf46-d378-4980-99e3-074a2376b16e
 create_charts(svr_data_asia, models_aves, "Asia")
@@ -1783,8 +1749,6 @@ version = "3.5.0+0"
 
 # ╔═╡ Cell order:
 # ╠═8b3d72d8-137e-11ef-3ad4-01bbddb651b1
-# ╠═c991017a-24f1-44e6-ab42-003a68d43ce3
-# ╠═e3cd7aa4-fb4f-4e45-9c46-7d41885e2a0a
 # ╠═efcfbf46-d378-4980-99e3-074a2376b16e
 # ╠═8b5fbe6e-066d-4640-89f4-de184e57f40d
 # ╠═8f9ad292-c685-4ee7-a115-1bc5ada19b17

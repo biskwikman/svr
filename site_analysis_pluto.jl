@@ -28,6 +28,12 @@ begin
 	ensembles = 201:210; nothing
 end
 
+# ╔═╡ 03acc56f-029f-4562-a1b7-13f5c1daa675
+@chain veg_df begin
+	leftjoin(igbp_df, on="Veg_Type_Code")
+	
+end
+
 # ╔═╡ a654ecfe-9563-437e-83d6-8c9c98363c14
 # Create grouped input df
 begin
@@ -42,9 +48,9 @@ begin
 	input_df[!,:Key] = string.(input_df[:,:Year], "_", input_df[:, :DOY], "_", input_df[:,:Site_ID])
 	input_df = innerjoin(input_df, veg_df, on=:Site_ID)
 	input_df
-	println(mean(filter(:Version => isequal(:c61), input_df)[:, :Input_GPP]))
-	println(mean(filter(:Version => isequal(:c05), input_df)[:, :Input_GPP]))
-	# nothing
+	# println(mean(filter(:Version => isequal(:c61), input_df)[:, :Input_GPP]))
+	# println(mean(filter(:Version => isequal(:c05), input_df)[:, :Input_GPP]))
+	nothing
 end
 
 # ╔═╡ 90f09075-9c22-4e1a-9c1a-6d4d475cbd0a
@@ -1920,6 +1926,7 @@ version = "3.5.0+0"
 
 # ╔═╡ Cell order:
 # ╠═b3dd68ba-8512-11ee-367a-e5bba69e1e78
+# ╠═03acc56f-029f-4562-a1b7-13f5c1daa675
 # ╠═dbc1352c-a1e2-4936-8890-b3e5b5bb907b
 # ╠═a654ecfe-9563-437e-83d6-8c9c98363c14
 # ╠═90f09075-9c22-4e1a-9c1a-6d4d475cbd0a
