@@ -104,8 +104,8 @@ begin
 		)
 		select(:, :Ensemble => (x -> string.(x)) => :Ensemble)
 		groupby(:Version)
-		@subset(:R2 .== maximum(:R2))
-		sort!(:Version)
+		# @subset(:R2 .== maximum(:R2))
+		# sort!(:Version)
 	end
 
 	veg_type_stats_df = @chain mdf begin
@@ -140,8 +140,8 @@ begin
 		sort(Cols(:Forest, :Version))
 	end
 
-	# print(stats_df)
-	println(veg_type_stats_df)
+	print(stats_df)
+	# println(veg_type_stats_df)
 	# println(forest_stats_df)
 end
 
