@@ -101,7 +101,7 @@ begin
 
 	for ver in vers
 		# file for map
-		nc_map_data = NCDatasets.NCDataset("./$collection.$ver.$(uppercase(modis_var)).GROW_SEAS.ASIA.YEAR.nc")[nc_var][:,:,:]
+		nc_map_data = NCDatasets.NCDataset("../../modis_nc/monthly_gs/$collection.$ver.$(uppercase(modis_var)).GROW_SEAS.ASIA.YEAR.nc")[nc_var][:,:,:]
 
 		# apply regression 
 		trend_array = mapslices(regr_slice, nc_map_data; dims=3)
@@ -140,7 +140,7 @@ begin
 		m_colormap = :Spectral_11
 	end
 	
-	f_map = Figure(backgroundcolor=RGBf(0.98, 0.98, 0.98), size=(1400, 1200))
+	f_map = Figure(size=(1400, 1200))
 	Label(
 		f_map[0,1:2],
 		"",
@@ -222,7 +222,7 @@ begin
 		region_caps = replace(uppercase(region), " "=>"_")
 		for (ver, data) in vers
 			# file for chart
-			nc_chart_data = NCDatasets.NCDataset("./region_mean/$collection.$ver.$(uppercase(modis_var)).GROW_SEAS.$(region_caps)_ANOM.YEAR.nc")[nc_var][1,1,:]
+			nc_chart_data = NCDatasets.NCDataset("../../modis_nc/monthly_gs/region_mean/$collection.$ver.$(uppercase(modis_var)).GROW_SEAS.$(region_caps)_ANOM.YEAR.nc")[nc_var][1,1,:]
 			
 			chart_data[region][ver] = nc_chart_data
 				
@@ -252,7 +252,7 @@ begin
 		limits = (nothing, nothing, -1, 1)
 	end
 	
-	f = Figure(backgroundcolor = RGBf(0.98, 0.98, 0.98), size=(600, 600))
+	f = Figure(size=(600, 600))
 	Label(
 		f[0,1:2],
 		"",

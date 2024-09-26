@@ -116,7 +116,7 @@ begin
 			size=50,
 		)
 		
-		Label(fig[0,:], replace(uppercase(dataset), "_"=>" ", "DAY"=>"Day", "NIGHT"=>"Night") * " Estimation: Interannual Trend", fontsize=50)
+		# Label(fig[0,:], replace(uppercase(dataset), "_"=>" ", "DAY"=>"Day", "NIGHT"=>"Night") * " Estimation: Interannual Trend", fontsize=50)
 		# colgap!(fig.layout, 1, colspacing)
 		# rowgap!(fig.layout, 2, rowspacing)
 		# resize_to_layout!(fig)
@@ -134,7 +134,7 @@ begin
 		colspacing=Relative(0.08)
 		hm=undef
 		rowspacing=Relative(-0.1)
-		fig = Figure(size = (1400, 1200))
+		fig = Figure(size = (1400, 800))
 		
 		ax1 = Axis(fig[1,1], title="V6 - V5",
 				xticklabelsvisible=false,
