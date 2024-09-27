@@ -37,23 +37,20 @@ end
 
 # ╔═╡ 15ebd3be-f34d-496e-87d9-fc9af5762b25
 begin
-	legendlabelsize = 40
-	legendtitlesize = 40
-	legendwidth = 150
-	versionlabelsize = 75
-	regionnamefontsize = 70
-	axistitlesize = 55
-	ticklabelsize = 65
-	linewidth = 7
-	reglinewidth = 15
+	legendlabelsize = 16
+	legendtitlesize = 16
+	legendwidth = 3
+	versionlabelsize = 20
+	regionnamefontsize = 20
+	axistitlesize = 20
+	ticklabelsize = 16
+	linewidth = 3
+	reglinewidth = 3
 	yearformat = xs -> ["'$(SubString(string(x), 3,4))" for x in xs]
 	xticks = 2000:2:2020
 	linestyle = Linestyle([0.5, 1.0, 1.8, 3.0])
 	versions = ["005", "006", "061"]
 end
-
-# ╔═╡ 34cf21c3-5922-4e65-b538-c4dd4a811585
-
 
 # ╔═╡ 51dbe244-701e-425e-9c9c-752597339240
 function get_sample_data()
@@ -83,10 +80,6 @@ begin
 		"MOD15A2H" => mod15a2,
 	)
 
-	# yearly_means = Dict(
-	# 	"GPP" => Dict{String, Float32}(), 
-	# )
-
 	region_names = ["East Asia","Southeast Asia","South Asia","Siberia"]
 
 	yearly_means = Dict(
@@ -95,17 +88,6 @@ begin
 		"Siberia" => Dict{String, Float32}(), 
 		"East Asia" => Dict{String, Float32}(), 
 	)
-
-	# chart_data = Dict(
-	# 	"GPP" => Dict{String, Vector{Union{Missing, Float32}}}(
-	# 		"005" => [],
-	# 		"005_var" => [],
-	# 		"006" => [],
-	# 		"006_var" => [],
-	# 		"061" => [],
-	# 		"061_var" => [],	
-	# 	),
-	# )
 
 		chart_data = Dict(
 		"South Asia" => Dict{String, Vector{Union{Missing, Float32}}}(
@@ -260,7 +242,7 @@ begin
 	TheilSenRegressor = @load TheilSenRegressor pkg=MLJScikitLearnInterface
 	ts_regr = TheilSenRegressor()
 	# chart_order_pres = ["Siberia"]
-	f_pres = Figure(resolution = (2900, 1800))
+	f_pres = Figure(resolution = (600, 600))
 	ga_pres = f_pres[1, 1] = GridLayout()
 	gb_pres = f_pres[2, 1] = GridLayout()
 	gc_pres = f_pres[1, 2] = GridLayout()
@@ -304,6 +286,7 @@ begin
 		
 		ax = Axis(
 			grids_pres[i][1,1], 
+			aspect=1,
 			title=title, xlabel=xlabel, ylabel=ylabel, xticks=xticks,
 			xtickformat=yearformat, xticklabelsvisible=xlabelvisible, xticksvisible=xlabelvisible,
 			xticklabelsize=ticklabelsize, yticklabelsize=ticklabelsize, xlabelsize=ticklabelsize, ylabelsize=ticklabelsize, titlesize=axistitlesize,
@@ -311,7 +294,7 @@ begin
 			# limits=(minimum(years)-1, maximum(years)+1, ylimmin, ylimmax)
 		)
 		
-		poly!(ax, Point2f[(0, -100), (2005.0, -100), (2005.0, 100), (0, 100)], color=RGBA(0.1, 0.1, 0.1, 0.1))
+		# poly!(ax, Point2f[(0, -100), (2005.0, -100), (2005.0, 100), (0, 100)], color=RGBA(0.1, 0.1, 0.1, 0.1))
 
 		df = DataFrame(
 			years = convert.(Float32, years),
@@ -319,11 +302,6 @@ begin
 			v006 = chart_data[dataset]["006_var"],
 			v061 = chart_data[dataset]["061_var"],
 		)
-
-		# df05 = DataFrame(
-		# 	years = convert.(Float32, range(2000, 2015)),
-		# 	v05 = chart_data[dataset]["005"] .- mean005
-		# )
 
 		df = df[1:length(line_years), :]
 
@@ -345,71 +323,10 @@ begin
 			end
 		end
 
-		# lines!(ax, range(2000,2015), chart_data[dataset]["005"] .- mean005, linewidth=linewidth, color=(colormap[1], 0.5))
-		# lines!(ax, years, chart_data[dataset]["006"] .- mean006, linewidth=linewidth, color=(colormap[2], 0.5))
-		# lines!(ax, years, chart_data[dataset]["061"] .- mean061, linewidth=linewidth, color=(colormap[3], 0.5))
-
-		# ts_machine_05 = machine(ts_regr, df05[:, [:years]], df05.v05)
-		# fit!(ts_machine_05, verbosity=0)
-		# regr05 = predict_mode(ts_machine_05)
-
-		# # Add 2016-2020 data based on slope
-		# while length(regr05) < 21
-		# 	append!(regr05, last(regr05) + regr05[2] - regr05[1])
-		# end
-		
-		# ts_machine_06 = machine(ts_regr, df[:, [:years]], df.v06)
-		# fit!(ts_machine_06, verbosity=0)
-		# regr06 = predict_mode(ts_machine_06)
-	
-		# ts_machine_61 = machine(ts_regr, df[:, [:years]], df.v61)
-		# fit!(ts_machine_61, verbosity=0)
-		# regr61 = predict_mode(ts_machine_61)
-
-		# lines!(ax, df.years, round.(regr05, digits=5), label="v5", linewidth=reglinewidth, linestyle=linestyle, color=colormap[1])
-		# lines!(ax, df.years, round.(regr06, digits=5), label="v6", linewidth=reglinewidth, linestyle=linestyle, color=colormap[2])
-		# lines!(ax, df.years, round.(regr61, digits=5), label="v6.1", linewidth=reglinewidth, linestyle=linestyle, color=colormap[3])
-		# text!(ax, df.years[begin], round.(regr05, digits=5)[begin], text="V5", color=colormap[1], fontsize=versionlabelsize, align=(:center,:bottom))
-		# text!(ax, df.years[11], round.(regr06, digits=5)[11], text="V6", color=colormap[2], fontsize=versionlabelsize, align=(:center,:bottom))
-		# text!(ax, df.years[end], round.(regr61, digits=5)[end], text="V6.1", color=colormap[3], fontsize=versionlabelsize, align=(:right,:top))
-
 		row = ceil(i / 2)
 		row = convert(Int, row)
 		col = ceil(i / 3)
 		col = convert(Int, col)
-
-		# v05_p = string(round(mk_original_test(df05.v05).p, digits=3))
-		# v05_τ = string(round(mk_original_test(df05.v05).τ, digits=2))
-		# println(mk_original_test(df05.v05))
-		# v05_test = LineElement(linewidth=reglinewidth, linestyle=:dash, color=(colormap[1]))
-		# v06_p = string(round(mk_original_test(df.v06).p, digits=3))
-		# v06_τ = string(round(mk_original_test(df.v06).τ, digits=2))
-		# println(mk_original_test(df.v06))
-		# v06_test = LineElement(linewidth=reglinewidth, linestyle=:dash, color=(colormap[2]))
-		# v61_p = string(round(mk_original_test(df.v61).p, digits=3))
-		# v61_τ = string(round(mk_original_test(df.v61).τ, digits=2))
-		# println(mk_original_test(df.v61))
-		# v61_test = LineElement(linewidth=reglinewidth, linestyle=:dash, color=(colormap[3]))
-
-		# Legend(f_pres[i,2][1,1],
-		# 	[v05_test, v06_test, v61_test],
-		# 	[v05_p, v06_p, v61_p],
-		# 	"P (MK)",
-		# 	labelsize=legendlabelsize,
-		# 	titlesize=legendtitlesize,
-		# 	width=legendwidth,
-		# 	valign=:bottom,
-		# )
-
-		# Legend(f_pres[i,2][2,1],
-		# 	[v05_test, v06_test, v61_test],
-		# 	[v05_τ, v06_τ, v61_τ],
-		# 	"τ (MK)",
-		# 	labelsize=legendlabelsize,
-		# 	titlesize=legendtitlesize,
-		# 	width=legendwidth,
-		# 	valign=:top,
-		# )
 
 		valign=:top
 		halign=:left
@@ -2451,7 +2368,6 @@ version = "3.5.0+0"
 # ╠═90ef6c63-1be1-4095-8012-90bfccaef3e2
 # ╠═15ebd3be-f34d-496e-87d9-fc9af5762b25
 # ╠═bb134d7c-a599-498d-8830-575cb7d8fb0e
-# ╠═34cf21c3-5922-4e65-b538-c4dd4a811585
 # ╠═5a9d0a90-0270-43e9-acf6-a82027cf1ec6
 # ╠═51dbe244-701e-425e-9c9c-752597339240
 # ╠═bb7c9ce3-21ca-4c50-8973-b6b690e7cb0c

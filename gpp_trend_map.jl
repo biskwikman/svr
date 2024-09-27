@@ -77,6 +77,49 @@ begin
 	nothing
 end
 
+# ╔═╡ b353d1f2-38f6-4d0b-9e10-3fe4ca7f127b
+# Combined years one figure
+begin
+	function create_figure(trend_array::Array)
+		colormap_label = L"kgC\; m^2\; year^{-1}"
+		fig = Figure(size = (1000, 1200))
+		ticklabelsize=35
+		colorbarlabelsize=45
+		titlesize=35
+		colspacing=Relative(0.08)
+		hm=undef
+		rowspacing=Relative(-0.1)
+
+		for (i, (ver, ax_loc, array_index, end_year)) in enumerate(zip(["C5", "C6", "C6", "C6.1", "C6.1"], [fig[1,1], fig[2,1], fig[2,2], fig[3,1], fig[3,2]], [1,2,2,3,3],[2015,2015,2020,2015,2020]))
+		end_year == 2015 ? trend_data = trend_array_2015 : trend_data = trend_array_2020
+			ax = Axis(ax_loc, title=ver*": 2000-$(end_year)",
+				xticklabelsvisible=false,
+				yticklabelsvisible=false,
+				xticksvisible=false,
+				yticksvisible=false,
+				limits=((60, 180), (-10, 80)),
+				titlesize=titlesize,
+				aspect=DataAspect()
+			)
+			poly!(ax, GeoMakie.land(), color=:gray)
+			hm = heatmap!(ax, 60..180, -10..80, trend_data[:,:,array_index]; colorrange=colorrange, colormap=colorgradient)
+			lines!(ax, GeoMakie.coastlines(), color=:gray, linewidth=0.5)
+		end
+
+		digits = 3
+		
+		Colorbar(
+			fig[1,2][1,:], hm, tellwidth=false, tellheight=false, vertical=false,
+			ticklabelsize=ticklabelsize, label=colormap_label, labelsize=colorbarlabelsize,
+			ticks=ticks, tickformat=tickformat,
+			width=Relative(4/5),
+			size=50,
+		)
+		return fig
+	end
+	create_figure(trend_array)
+end
+
 # ╔═╡ 8cf4aae7-4471-4108-83cf-7e192c7e6b5e
 begin
 	function create_maps(trend_array::Array)
@@ -98,10 +141,9 @@ begin
 				yticksvisible=false,
 				limits=((60, 180), (-10, 80)),
 				titlesize=titlesize,
-				aspect=DataAspect()
+				aspect=DataAspect(),
 			)
-			# hidedecorations!(ax)
-			poly!(ax, GeoMakie.land(), color=:lightgray)
+			poly!(ax, GeoMakie.land(), color=:gray)
 			hm = heatmap!(ax, 60..180, -10..80, trend_array[:,:,i]; colorrange=colorrange, colormap=colorgradient)
 			lines!(ax, GeoMakie.coastlines(), color=:gray, linewidth=0.5)
 		end
@@ -128,15 +170,16 @@ end
 # ╔═╡ d0d5cd76-0559-4a31-a91b-9d61cb97012f
 begin
 	function create_differential_maps(trend_array::Array)
-		ticklabelsize=45
-		colorbarlabelsize=45
-		titlesize=45
+		colormap_label = L"kgC\; m^2\; year^{-1}"
+		ticklabelsize=40
+		colorbarlabelsize=40
+		titlesize=40
 		colspacing=Relative(0.08)
 		hm=undef
 		rowspacing=Relative(-0.1)
-		fig = Figure(size = (1400, 800))
+		fig = Figure(size = (1200, 800))
 		
-		ax1 = Axis(fig[1,1], title="V6 - V5",
+		ax1 = Axis(fig[1,1], title="Change from C5 to C6",
 				xticklabelsvisible=false,
 				yticklabelsvisible=false,
 				xticksvisible=false,
@@ -145,7 +188,7 @@ begin
 				titlesize=titlesize,
 				aspect=DataAspect()
 			)
-		ax2 = Axis(fig[1,2], title="V6.1 - V6",
+		ax2 = Axis(fig[1,2], title="Change from C6 to C6.1",
 				xticklabelsvisible=false,
 				yticklabelsvisible=false,
 				xticksvisible=false,
@@ -155,24 +198,25 @@ begin
 				aspect=DataAspect()
 			)
 		
-		poly!(ax1, GeoMakie.land(), color=:lightgray)
-		poly!(ax2, GeoMakie.land(), color=:lightgray)
-		hm = heatmap!(ax1, 60..180, -10..80, trend_array_2015[:,:,2]
-		- trend_array_2015[:,:,1];
+		poly!(ax1, GeoMakie.land(), color=:gray)
+		poly!(ax2, GeoMakie.land(), color=:gray)
+		hm = heatmap!(ax1, 60..180, -10..80, trend_array_2015[:,:,1]
+		- trend_array_2015[:,:,2];
 		colorrange=colorrange, colormap=colorgradient_diff
 		)
-		heatmap!(ax2, 60..180, -10..80, trend_array_2020[:,:,3]
-		- trend_array_2020[:,:,2];
+		heatmap!(ax2, 60..180, -10..80, trend_array_2020[:,:,2]
+		- trend_array_2020[:,:,3];
 		colorrange=colorrange, colormap=colorgradient_diff
 		)
 		lines!(ax1, GeoMakie.coastlines(), color=:gray, linewidth=0.5)
 		lines!(ax2, GeoMakie.coastlines(), color=:gray, linewidth=0.5)
 
 		Colorbar(
-			fig[1,1:2][2,1], colorrange=colorrange, colormap=colorgradient_diff, 
-			# tellwidth=false, tellheight=false, 
+			fig[1,1:2][2,1], colorrange=colorrange, colormap=colorgradient_diff,
+			labelsize=45,
+			label=colormap_label,
 			vertical=false,
-			ticklabelsize=ticklabelsize, label="",
+			ticklabelsize=ticklabelsize,
 			ticks=ticks, tickformat=tickformat,
 			width=Relative(4/5),
 			flipaxis=false,
@@ -203,6 +247,11 @@ main {
     margin-right: 20% !important;
 }
 """
+
+# ╔═╡ 22c50eca-4022-43f7-ba98-741c4657540d
+for i in zip([1, 2], ["a", "b"], [:a, :b])
+	println(i)
+end
 
 # ╔═╡ 00000000-0000-0000-0000-000000000001
 PLUTO_PROJECT_TOML_CONTENTS = """
@@ -1800,8 +1849,9 @@ version = "3.5.0+0"
 """
 
 # ╔═╡ Cell order:
-# ╠═588bb11e-0545-480f-9bfa-b8488af630ba
+# ╠═b353d1f2-38f6-4d0b-9e10-3fe4ca7f127b
 # ╠═8cf4aae7-4471-4108-83cf-7e192c7e6b5e
+# ╠═588bb11e-0545-480f-9bfa-b8488af630ba
 # ╠═d0d5cd76-0559-4a31-a91b-9d61cb97012f
 # ╠═57e11ab0-c6cf-4413-99b5-9f2f0e5b0507
 # ╠═ca07dd67-64b9-4842-93dc-727fd66cfdb8
@@ -1809,5 +1859,6 @@ version = "3.5.0+0"
 # ╠═85e90138-4c75-49cc-85bb-99748102ecc9
 # ╠═ad542e2e-cba9-11ee-1617-ed02db50a0fe
 # ╠═1f787995-301f-4672-a821-643b8c757cf1
+# ╠═22c50eca-4022-43f7-ba98-741c4657540d
 # ╟─00000000-0000-0000-0000-000000000001
 # ╟─00000000-0000-0000-0000-000000000002
