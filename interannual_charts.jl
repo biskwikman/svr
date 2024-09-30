@@ -47,7 +47,7 @@ begin
 	linewidth = 3
 	reglinewidth = 3
 	yearformat = xs -> ["'$(SubString(string(x), 3,4))" for x in xs]
-	xticks = 2000:2:2020
+	xticks = 2000:3:2020
 	linestyle = Linestyle([0.5, 1.0, 1.8, 3.0])
 	versions = ["005", "006", "061"]
 end
@@ -247,9 +247,9 @@ begin
 	gb_pres = f_pres[2, 1] = GridLayout()
 	gc_pres = f_pres[1, 2] = GridLayout()
 	gd_pres = f_pres[2, 2] = GridLayout()
-	gl_pres = f_pres[0, :] = GridLayout()
+	# gl_pres = f_pres[0, :] = GridLayout()
 	grids_pres = [ga_pres, gb_pres, gc_pres, gd_pres]
-	Label(gl_pres[1,1], "GPP Estimation: Variation from 2000-2005 Mean", fontsize=regionnamefontsize, tellwidth=false)
+	# Label(gl_pres[1,1], "GPP Estimation: Variation from 2000-2005 Mean", fontsize=regionnamefontsize, tellwidth=false)
 
 	for (i, dataset) in enumerate(region_names)
 		limits = []
@@ -290,7 +290,8 @@ begin
 			title=title, xlabel=xlabel, ylabel=ylabel, xticks=xticks,
 			xtickformat=yearformat, xticklabelsvisible=xlabelvisible, xticksvisible=xlabelvisible,
 			xticklabelsize=ticklabelsize, yticklabelsize=ticklabelsize, xlabelsize=ticklabelsize, ylabelsize=ticklabelsize, titlesize=axistitlesize,
-			limits=(minimum(years)-1, maximum(years)+1, -0.1, 0.5),
+			limits=(nothing, nothing, -0.1, 0.5),
+			# limits=(minimum(years)-1, maximum(years)+1, -0.1, 0.5),
 			# limits=(minimum(years)-1, maximum(years)+1, ylimmin, ylimmax)
 		)
 		
