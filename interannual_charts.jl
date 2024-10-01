@@ -45,9 +45,9 @@ begin
 	axistitlesize = 20
 	ticklabelsize = 16
 	linewidth = 3
-	reglinewidth = 3
+	reglinewidth = 4
 	yearformat = xs -> ["'$(SubString(string(x), 3,4))" for x in xs]
-	xticks = 2000:3:2020
+	xticks = 2000:5:2020
 	linestyle = Linestyle([0.5, 1.0, 1.8, 3.0])
 	versions = ["005", "006", "061"]
 end
@@ -241,40 +241,33 @@ colormap = Makie.wong_colors()
 begin
 	TheilSenRegressor = @load TheilSenRegressor pkg=MLJScikitLearnInterface
 	ts_regr = TheilSenRegressor()
-	# chart_order_pres = ["Siberia"]
-	f_pres = Figure(resolution = (600, 600))
+	f_pres = Figure(size = (650, 650))
 	ga_pres = f_pres[1, 1] = GridLayout()
 	gb_pres = f_pres[2, 1] = GridLayout()
 	gc_pres = f_pres[1, 2] = GridLayout()
 	gd_pres = f_pres[2, 2] = GridLayout()
-	# gl_pres = f_pres[0, :] = GridLayout()
 	grids_pres = [ga_pres, gb_pres, gc_pres, gd_pres]
-	# Label(gl_pres[1,1], "GPP Estimation: Variation from 2000-2005 Mean", fontsize=regionnamefontsize, tellwidth=false)
 
 	for (i, dataset) in enumerate(region_names)
 		limits = []
 		mean005 = mean(chart_data[dataset]["005"][1:6])
 		mean006 = mean(chart_data[dataset]["006"][1:6])
 		mean061 = mean(chart_data[dataset]["061"][1:6])
-		title=uppercase(dataset)
-		ylabel = ""
-		xlabel = ""
+		ylabel = rich("kgC m", superscript("2"), " year", superscript("-1")) #L"kgC\; m^2\; year^{-1}"
+		xlabel = "Year"
 		xlabelvisible=false
-		if i == 2
-			ylabel = L"kgC\; m^2\; year^{-1}"
-			xlabel = L"Year"
-			xlabelvisible=true
-		elseif i == 4
+		ylabelvisible=false
+		if i ∈ [2,4]
 			xlabelvisible=true
 		end
-
+		if i ∈ [1,2]
+			ylabelvisible=true
+		end
 		for ver in versions
 			# Calculate means for 2000-2005
 			yearly_means[dataset][ver] = mean(chart_data[dataset][ver][1:6])
-
 			# Convenience
 			chart_data[dataset][ver * "_var"] = chart_data[dataset][ver] .- yearly_means[dataset][ver]
-
 			# Calculate chart limits
 			push!(limits, extrema(chart_data[dataset][ver * "_var"])...)
 		end
@@ -287,16 +280,14 @@ begin
 		ax = Axis(
 			grids_pres[i][1,1], 
 			aspect=1,
-			title=title, xlabel=xlabel, ylabel=ylabel, xticks=xticks,
-			xtickformat=yearformat, xticklabelsvisible=xlabelvisible, xticksvisible=xlabelvisible,
-			xticklabelsize=ticklabelsize, yticklabelsize=ticklabelsize, xlabelsize=ticklabelsize, ylabelsize=ticklabelsize, titlesize=axistitlesize,
+			title=dataset, xlabel=xlabel, ylabel=ylabel, xticks=xticks,
+			xminorgridvisible=true, xminorticks=2000:2020,
+			xlabelvisible=xlabelvisible, xticklabelsvisible=xlabelvisible, xticksvisible=true,
+			xticklabelsize=ticklabelsize, yticklabelsize=ticklabelsize, xlabelsize=ticklabelsize,
+			ylabelvisible=ylabelvisible, ylabelsize=ticklabelsize, titlesize=axistitlesize,
 			limits=(nothing, nothing, -0.1, 0.5),
-			# limits=(minimum(years)-1, maximum(years)+1, -0.1, 0.5),
-			# limits=(minimum(years)-1, maximum(years)+1, ylimmin, ylimmax)
 		)
-		
 		# poly!(ax, Point2f[(0, -100), (2005.0, -100), (2005.0, 100), (0, 100)], color=RGBA(0.1, 0.1, 0.1, 0.1))
-
 		df = DataFrame(
 			years = convert.(Float32, years),
 			v005 = chart_data[dataset]["005_var"],
@@ -310,18 +301,18 @@ begin
 			lines!(ax, line_years, chart_data[dataset][ver * "_var"][1:length(line_years)], label="v" * ver[2:3] * "μ", linewidth=linewidth, alpha=0.5, color=colormap[iv])
 
 			# Train data for sens slope
-			ts_machine = machine(ts_regr, dropmissing(df[:, Cols("years", "v"*ver)])[:, [:years]], dropmissing(df[:, Cols("years", "v"*ver)])[:, Cols("v"*ver)])
+			ts_machine = machine(ts_regr, dropmissing(df[:, Cols("years", "v"*ver)])[:, [:years]], dropmissing(df[:, Cols("years", "v"*ver)])[:, "v"*ver], scitype_check_level=0)
 			fit!(ts_machine, verbosity=0)
 			regr = predict_mode(ts_machine)
 
 			# Draw regressor lines
-			lines!(ax, df.years[1:length(regr)], round.(regr, digits=5), label="v"*ver[2:3]*"lm", linewidth=reglinewidth, linestyle=linestyle, color=colormap[iv])
-
-			# Draw labels
-			label = replace(ver, "0"=>"")
-			if i == 1
-				text!(ax, 0, 1, text="V"*label, color=colormap[iv], font=:bold, fontsize=versionlabelsize, align=(:left,:top), space=:relative, offset=((iv-1)*120, 0))
+			if length(regr) == 16 && length(line_years) > 16
+				slope = regr[end]-regr[end-1]
+				while length(regr) < 21
+					push!(regr, regr[end]+slope)
+				end
 			end
+			lines!(ax, df.years[1:length(regr)], round.(regr, digits=5), label="v"*ver[2:3]*"lm", linewidth=reglinewidth, linestyle=linestyle, color=colormap[iv])
 		end
 
 		row = ceil(i / 2)
@@ -331,6 +322,13 @@ begin
 
 		valign=:top
 		halign=:left
+	end
+	# Draw version labels
+	for (i, v) in enumerate(["5", "6", "6.1"])
+		Label(f_pres[1,1], "C$v", halign=:left, valign=:top,
+			padding=(15,4,4,4+((i-1)*18)),
+			color=colormap[i], tellwidth=false, tellheight=false,
+			fontsize=20)
 	end
 	f_pres
 end
