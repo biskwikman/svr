@@ -32,9 +32,6 @@ end
 # ╔═╡ ba842c64-3f63-42c2-bade-d1d640d254b4
 @bind line_years Select([2000:2015, 2000:2020])
 
-# ╔═╡ 90ef6c63-1be1-4095-8012-90bfccaef3e2
-# save(@sprintf("./output/%s.png", region_name), f_pres)
-
 # ╔═╡ 15ebd3be-f34d-496e-87d9-fc9af5762b25
 begin
 	legendlabelsize = 16
@@ -125,6 +122,28 @@ begin
 	)
 
 	string.(years)
+end
+
+# ╔═╡ 06c0b1bb-f598-4d87-9792-9134eb2b56c5
+# Make chart df
+begin
+	chart_data_df = Dict()
+	for (i, dataset) in enumerate(region_names)
+		limits = []
+		mean005 = mean(chart_data[dataset]["005"][1:6])
+		mean006 = mean(chart_data[dataset]["006"][1:6])
+		mean061 = mean(chart_data[dataset]["061"][1:6])
+		df = DataFrame("Years"=>2000:2020)
+		for ver in versions
+			# Calculate means for 2000-2005
+			yearly_means[dataset][ver] = mean(chart_data[dataset][ver][1:6])
+			anomaly = chart_data[dataset][ver] .- yearly_means[dataset][ver]
+			anomaly = convert(Vector{Union{Float32, Missing}}, anomaly)
+			while length(anomaly) < 21; push!(anomaly, missing) end
+			df[!, ver] = anomaly
+			chart_data_df[dataset] = df
+		end
+	end
 end
 
 # ╔═╡ 8dce198f-cc18-4cce-9221-7067fe6554bb
@@ -241,28 +260,53 @@ colormap = Makie.wong_colors()
 begin
 	TheilSenRegressor = @load TheilSenRegressor pkg=MLJScikitLearnInterface
 	ts_regr = TheilSenRegressor()
-	f_pres = Figure(size = (650, 650))
-	ga_pres = f_pres[1, 1] = GridLayout()
-	gb_pres = f_pres[2, 1] = GridLayout()
-	gc_pres = f_pres[1, 2] = GridLayout()
-	gd_pres = f_pres[2, 2] = GridLayout()
-	grids_pres = [ga_pres, gb_pres, gc_pres, gd_pres]
+	f = Figure(size = (650, 650))
+	# ga_pres = f_pres[1, 1] = GridLayout()
+	# gb_pres = f_pres[2, 1] = GridLayout()
+	# gc_pres = f_pres[1, 2] = GridLayout()
+	# gd_pres = f_pres[2, 2] = GridLayout()
+	# grids_pres = [ga_pres, gb_pres, gc_pres, gd_pres]
+
+	titles = ["Siberia" "South Asia"; 
+			"Southeast Asia" "East Asia"]
+	ax = [Axis(
+			f[y,x], title=titles[y,x],
+			aspect=1,
+			xlabel="Year", ylabel=rich("kgC m", superscript("2"), " year", superscript("-1")),
+			xticks=2000:5:2020,
+			xminorgridvisible=true, xminorticks=2000:2020,
+			xlabelvisible=(y == 1 ? false : true),
+			xticklabelsvisible=(y == 1 ? false : true),
+			ylabelvisible=(x == 2 ? false : true),
+			yticklabelsvisible=(x == 2 ? false : true),
+			xlabelsize=16, ylabelsize=16,
+			titlesize=axistitlesize,
+			limits=(nothing, nothing, -0.1, 0.5),
+		) for x in 1:2 for y in 1:2]
+
+	for (i_r, region) in enumerate(chart_data_df)
+		axis_cartesian_idx = findall(x->x == region[1], titles)
+		axis_idx = LinearIndices(titles)[axis_cartesian_idx][1]
+		for (i_v, ver) in enumerate(vers)
+			lines = lines!(axs[axis_idx], chart_years, chart_data_df[region[1]][:, ver], color=colormap[i_v], linewidth=linewidth, alpha=0.5)
+		end
+	end
 
 	for (i, dataset) in enumerate(region_names)
 		limits = []
 		mean005 = mean(chart_data[dataset]["005"][1:6])
 		mean006 = mean(chart_data[dataset]["006"][1:6])
 		mean061 = mean(chart_data[dataset]["061"][1:6])
-		ylabel = rich("kgC m", superscript("2"), " year", superscript("-1")) #L"kgC\; m^2\; year^{-1}"
-		xlabel = "Year"
-		xlabelvisible=false
-		ylabelvisible=false
-		if i ∈ [2,4]
-			xlabelvisible=true
-		end
-		if i ∈ [1,2]
-			ylabelvisible=true
-		end
+		# ylabel = rich("kgC m", superscript("2"), " year", superscript("-1"))
+		# xlabel = "Year"
+		# xlabelvisible=false
+		# ylabelvisible=false
+		# if i ∈ [2,4]
+		# 	xlabelvisible=true
+		# end
+		# if i ∈ [1,2]
+		# 	ylabelvisible=true
+		# end
 		for ver in versions
 			# Calculate means for 2000-2005
 			yearly_means[dataset][ver] = mean(chart_data[dataset][ver][1:6])
@@ -277,16 +321,16 @@ begin
 		ylimmax = ((extrema(limits)[2] - extrema(limits)[1]) * 0.1) + extrema(limits)[2]
 		ylimmin = extrema(limits)[1] - ((extrema(limits)[2] - extrema(limits)[1]) * 0.1)
 		
-		ax = Axis(
-			grids_pres[i][1,1], 
-			aspect=1,
-			title=dataset, xlabel=xlabel, ylabel=ylabel, xticks=xticks,
-			xminorgridvisible=true, xminorticks=2000:2020,
-			xlabelvisible=xlabelvisible, xticklabelsvisible=xlabelvisible, xticksvisible=true,
-			xticklabelsize=ticklabelsize, yticklabelsize=ticklabelsize, xlabelsize=ticklabelsize,
-			ylabelvisible=ylabelvisible, ylabelsize=ticklabelsize, titlesize=axistitlesize,
-			limits=(nothing, nothing, -0.1, 0.5),
-		)
+		# ax = Axis(
+		# 	grids_pres[i][1,1], 
+		# 	aspect=1,
+		# 	title=dataset, xlabel=xlabel, ylabel=ylabel, xticks=xticks,
+		# 	xminorgridvisible=true, xminorticks=2000:2020,
+		# 	xlabelvisible=xlabelvisible, xticklabelsvisible=xlabelvisible, xticksvisible=true,
+		# 	xticklabelsize=ticklabelsize, yticklabelsize=ticklabelsize, xlabelsize=ticklabelsize,
+		# 	ylabelvisible=ylabelvisible, ylabelsize=ticklabelsize, titlesize=axistitlesize,
+		# 	limits=(nothing, nothing, -0.1, 0.5),
+		# )
 		# poly!(ax, Point2f[(0, -100), (2005.0, -100), (2005.0, 100), (0, 100)], color=RGBA(0.1, 0.1, 0.1, 0.1))
 		df = DataFrame(
 			years = convert.(Float32, years),
@@ -298,7 +342,7 @@ begin
 		df = df[1:length(line_years), :]
 
 		for (iv, ver) in enumerate(versions)
-			lines!(ax, line_years, chart_data[dataset][ver * "_var"][1:length(line_years)], label="v" * ver[2:3] * "μ", linewidth=linewidth, alpha=0.5, color=colormap[iv])
+			# lines!(ax, line_years, chart_data[dataset][ver * "_var"][1:length(line_years)], label="v" * ver[2:3] * "μ", linewidth=linewidth, alpha=0.5, color=colormap[iv])
 
 			# Train data for sens slope
 			ts_machine = machine(ts_regr, dropmissing(df[:, Cols("years", "v"*ver)])[:, [:years]], dropmissing(df[:, Cols("years", "v"*ver)])[:, "v"*ver], scitype_check_level=0)
@@ -2364,8 +2408,8 @@ version = "3.5.0+0"
 
 # ╔═╡ Cell order:
 # ╠═ba842c64-3f63-42c2-bade-d1d640d254b4
-# ╠═90ef6c63-1be1-4095-8012-90bfccaef3e2
 # ╠═15ebd3be-f34d-496e-87d9-fc9af5762b25
+# ╠═06c0b1bb-f598-4d87-9792-9134eb2b56c5
 # ╠═bb134d7c-a599-498d-8830-575cb7d8fb0e
 # ╠═5a9d0a90-0270-43e9-acf6-a82027cf1ec6
 # ╠═51dbe244-701e-425e-9c9c-752597339240
