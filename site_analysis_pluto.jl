@@ -174,8 +174,9 @@ end
 begin
 	axislabelsize = 45
 	ticklabelsize = 50
-	f = Figure(backgroundcolor = RGBf(0.98, 0.98, 0.98), resolution = (2000, 700))
-	titles = [:V05, :V06, :V61]
+	f = Figure(resolution = (2000, 700))
+	# titles = [:V05, :V06, :V61]
+	titles = ["V05", "V06", "V6.1"]
 	for (i, df) in enumerate([c05_lm_df, c06_lm_df, c61_lm_df])
 		if i == 1
 			yticklabelsvisible=true
@@ -187,10 +188,10 @@ begin
 		
 		ax = Axis(f[1, i], title=String(titles[i]),
 			titlesize=45,
-			# xlabel=rich("Obs GPP (gC m",superscript("-2"),"day",superscript("-1"),")"),
-			xlabel=L"Obs\; GPP\; (gC m^{-2}day^{-1})",
-			# ylabel=rich("SVR GPP (gC m",superscript("-2"),"day",superscript("-1"),")"),
-			ylabel=L"SVR\; GPP\; (gC m^{-2}day^{-1})",
+			xlabel=rich("Obs GPP (gC m",superscript("-2"),"day",superscript("-1"),")"),
+			# xlabel=L"Obs\; GPP\; (gC m^{-2}day^{-1})",
+			ylabel=rich("SVR GPP (gC m",superscript("-2"),"day",superscript("-1"),")"),
+			# ylabel=L"SVR\; GPP\; (gC m^{-2}day^{-1})",
 			ylabelvisible=ylabelvisible,
 			limits=(0, 18, 0, 18),
 			aspect=DataAspect(),
