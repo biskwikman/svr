@@ -395,41 +395,45 @@ begin
 			xlabelvisible=(y == 1 ? false : true),
 			xticklabelsvisible=(y == 1 ? false : true),
 			ylabelvisible=(x == 1 && inner == 1 ? true : false),
-			yticklabelsvisible=(inner == 1 ? true : false),
+			# yticklabelsvisible=(inner == 1 ? true : false),
 			xlabelsize=16, ylabelsize=16,
-			titlesize=16, titlefont=:regular,
+			titlesize=16, titlefont=:regular, title=(inner == 1 ? "GPP" : "GPP Anomaly")
 		) for inner in 1:2 for x in 1:2 for y in 1:2]
 
-		trendy_array = []
-		trendy_array_Δ = []
+		linkyaxes!(axs[1],axs[2],axs[3],axs[4])
+		linkyaxes!(axs[5],axs[6],axs[7],axs[8])
 
 		for (svr_region, trendy_region) in zip(svr_data_dfs, trendy_data_dfs)
 			axis_cartesian_idx = findall(x->x == svr_region[1], titles)
 			axis_idx = LinearIndices(titles)[axis_cartesian_idx][1]
 
 			aves = []
+			avesΔ = []
 			stds = []
 			for col in eachcol(trendy_data_dfs[trendy_region[1]][!, 2:end])
 				push!(aves, col)
+				push!(avesΔ, col .- mean(col[1:6]))
 				push!(stds, col)
 			end
 			trendy_mean = mean(aves)
 			trendy_sd = std(aves)
-			trendy_meanΔ = trendy_mean .- mean(trendy_mean[1:6])
-			# trendy_stdΔ = trendy_mean .- std(trendy_mean)
-			println(trendy_meanΔ)
+			trendy_sd_Δ = std(avesΔ)
 			
 			band!(axs[axis_idx], years, trendy_mean - trendy_sd, trendy_mean + trendy_sd, color=(:lightgray, 1))
+			band!(axs[axis_idx+4], years, trendy_mean .- mean(trendy_mean[1:6]) - trendy_sd_Δ, trendy_mean .- mean(trendy_mean[1:6]) + trendy_sd_Δ, color=(:lightgray, 1))
 			for model in models
-				lines!(axs[axis_idx], years, trendy_data_dfs[trendy_region[1]][:, model], color=:gray, linewidth=1)
-				lines!(axs[axis_idx+4], years, trendy_data_dfs[trendy_region[1]][:, model] .- mean(trendy_data_dfs[trendy_region[1]][1:6, model]), color=:gray, linewidth=1)
+				lines!(axs[axis_idx], years, trendy_data_dfs[trendy_region[1]][:, model], color=(:gray,0.7), linewidth=0.8)
+				lines!(axs[axis_idx+4], years, trendy_data_dfs[trendy_region[1]][:, model] .- mean(trendy_data_dfs[trendy_region[1]][1:6, model]), color=(:gray,0.7), linewidth=0.8)
 			end
-			
+
 			for (i_v, ver) in enumerate(vers)
 				lines!(axs[axis_idx], years, svr_data_dfs[svr_region[1]][:, ver], color=colormap[i_v], linewidth=3)
 				lines!(axs[axis_idx+4], years, svr_data_dfs[svr_region[1]][:, ver] .- mean(svr_data_dfs[svr_region[1]][1:6, ver]), color=colormap[i_v], linewidth=3)
 			end
 		end
+	for (iv, ver) in enumerate(["C5", "C6", "C6.1"])
+		text!(axs[1], 0, 1, text=ver, color=colormap[iv], font=:bold, fontsize=16, align=(:left,:top), space=:relative, offset=((iv-1)*25, 0))
+	end
 	fig
 end
 
