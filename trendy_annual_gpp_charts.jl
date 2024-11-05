@@ -1,5 +1,5 @@
 ### A Pluto.jl notebook ###
-# v0.19.46
+# v0.20.3
 
 using Markdown
 using InteractiveUtils
@@ -429,8 +429,8 @@ begin
 
 		ver_legend=["C5","C6","C6.1"]
 		for (i_v, ver) in enumerate(vers)
-			lines!(axs[axis_idx], years, svr_data_dfs[svr_region[1]][:, ver], color=colormap[i_v], linewidth=3, label=ver_legend[i_v])
-			lines!(axs[axis_idx+4], years, svr_data_dfs[svr_region[1]][:, ver] .- mean(svr_data_dfs[svr_region[1]][1:6, ver]), color=colormap[i_v], linewidth=3)
+			lines!(axs[axis_idx], years, svr_data_dfs[svr_region[1]][:, ver], color=colormap[i_v], linewidth=2, label=ver_legend[i_v])
+			lines!(axs[axis_idx+4], years, svr_data_dfs[svr_region[1]][:, ver] .- mean(svr_data_dfs[svr_region[1]][1:6, ver]), color=colormap[i_v], linewidth=2)
 		end
 	end
 	axislegend(axs[1],merge=true,rowgap=0,patchsize=(10,10))
@@ -485,7 +485,7 @@ StatsBase = "~0.34.3"
 PLUTO_MANIFEST_TOML_CONTENTS = """
 # This file is machine-generated - editing it directly is not advised
 
-julia_version = "1.11.0"
+julia_version = "1.11.1"
 manifest_format = "2.0"
 project_hash = "1d059527199974a700335e3c7890f5bee7b315f7"
 
