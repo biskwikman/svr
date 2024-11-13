@@ -326,7 +326,11 @@ begin
 	end
 
 	for (i,ver) in enumerate(["C5", "C6", "C6.1"])
-		Label(f[1,1][1,1], ver; halign=:left, valign=:top, height=i*20, tellheight=false, tellwidth=false)
+		Label(
+			f[1,1][1,1], ver; halign=:left,valign=:top,height=i*27,
+			fontsize=25,color=colormap[i],
+			tellheight=false,tellwidth=false,
+		)
 	end
 
 	resize_to_layout!(f)
