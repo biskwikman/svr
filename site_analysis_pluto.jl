@@ -1,5 +1,5 @@
 ### A Pluto.jl notebook ###
-# v0.19.46
+# v0.20.3
 
 using Markdown
 using InteractiveUtils
@@ -188,10 +188,10 @@ begin
 		
 		ax = Axis(f[1, i], title=String(titles[i]),
 			titlesize=45,
-			xlabel=rich("Obs GPP (gC m",superscript("-2"),"day",superscript("-1"),")"),
-			# xlabel=L"Obs\; GPP\; (gC m^{-2}day^{-1})",
-			ylabel=rich("SVR GPP (gC m",superscript("-2"),"day",superscript("-1"),")"),
-			# ylabel=L"SVR\; GPP\; (gC m^{-2}day^{-1})",
+			# xlabel=rich("Obs GPP (gC m",superscript("2")," day",superscript("-1"),")"),
+			xlabel=L"Obs\; GPP\; (gC m^{2}\; day^{-1})",
+			# ylabel=rich("SVR GPP (gC m",superscript("2")," day",superscript("-1"),")"),
+			ylabel=L"SVR\; GPP\; (gC m^{2}\; day^{-1})",
 			ylabelvisible=ylabelvisible,
 			limits=(0, 18, 0, 18),
 			aspect=DataAspect(),
@@ -258,7 +258,7 @@ StatsBase = "~0.34.2"
 PLUTO_MANIFEST_TOML_CONTENTS = """
 # This file is machine-generated - editing it directly is not advised
 
-julia_version = "1.11.0"
+julia_version = "1.11.1"
 manifest_format = "2.0"
 project_hash = "b6158423467fdccc88a7838bd81c7aac496ddc88"
 
