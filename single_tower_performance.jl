@@ -21,24 +21,22 @@ begin
 end
 
 # ╔═╡ b30ff903-6502-4e6d-b7c8-bde770e75e2d
-ec_df = CSV.read("asia_flux_061.csv", DataFrame)
+ec_df = CSV.read("asia_flux_061.csv", DataFrame);
 
 # ╔═╡ 584666f3-5526-487a-93c7-9a17a1307686
 nyears_df = unique(combine(groupby(ec_df, :site_code), [:syear, :eyear] => ((s,e) -> e-s) => :nyears ))
 
 # ╔═╡ f412622f-a5e3-484a-92be-e6fa44de1da5
-ec_df[ec_df.site_code .== tower_key, :]
+ec_df[ec_df.site_code .== tower_key, :];
 
 # ╔═╡ 86cec5e0-e9ec-4a00-8e02-70c0fe632294
-# tower_gpp_df = select(filter(row -> (row.site_code == tower_key && row.year in row.syear:row.eyear), ec_df), [:year, :doy] => ByRow((y,d) -> "$(y)_$(d)_38") => :Key, :gpp => :GPP_Obs)
+test_df = select(filter(row -> (row.site_code == tower_key && row.year in row.syear:row.eyear), ec_df), [:year, :doy] => ByRow((y,d) -> "$(y)_$(d)_38") => :Key, :gpp => :GPP_Obs);
 
 # ╔═╡ c4607492-1457-4b8a-ae56-a1f308372769
 # New output df
 begin
 	tower_gpp_df = select(filter(row -> (row.site_code == tower_key && row.year in row.syear:row.eyear), ec_df), [:year, :doy] => ByRow((y,d) -> "$(y)_$(d)_$(id)") => :Key, :gpp => :GPP_Obs)
-
-	# Gap-fill tower df
-	
+	tower_gpp_df.GPP_Obs = replace(tower_gpp_df.GPP_Obs, -9999.0 => missing)
 
 	ensembles = 201:210
 	for c in ["c05","c06","c61"]
@@ -53,17 +51,19 @@ begin
 		end
 	
 		rename!(output_df, Dict(:Column1=>:GPP, :Column3=>:Year, :Column4=>:DOY, :Column5=>:Site_ID, :Column6=>:Crossval_ID))
+
 		output_df[!, :Key] = string.(output_df[:, :Year], "_", output_df[:, :DOY], "_", output_df[:, :Site_ID])
 	
 		# Get mean of ensembles, need to make c06 just ens 9
 		if c == "c06"
 			output_gpp_df = subset!(output_df, :Ensemble => e -> e.==209, :Site_ID => s -> s.== id)
 			rename!(output_gpp_df, :GPP=>Symbol("GPP_Output_$c"))
-		else
+		elseif c ∈ ["c05", "c61"]
 			output_gpp_df = combine(groupby(filter(row -> row.Site_ID == id, output_df), :Key), :GPP => mean => Symbol("GPP_Output_$c"))
 		end
 
-		global tower_gpp_df = innerjoin(tower_gpp_df, output_gpp_df, on=:Key)
+		global tower_gpp_df = leftjoin(tower_gpp_df, output_gpp_df, on=:Key)
+		sort!(tower_gpp_df)
 		# model_df = select(gpp_df, :GPP_Obs => :x, :GPP_Output => :y)
 
 		# println(cor(gpp_df[:, :GPP_Obs], gpp_df[:, :GPP_Output]))
@@ -73,28 +73,14 @@ begin
 	tower_gpp_df
 end
 
-# ╔═╡ c83ef545-cc8d-4ae4-b7f1-8be5db241688
-begin
-	# gpp_df = innerjoin(tower_gpp_df, output_gpp_df, on=:Key)
-	# model_df = select(gpp_df, :GPP_Obs => :x, :GPP_Output => :y)
-end
-
-# ╔═╡ 08037839-7de8-48c9-945d-1b1b94e67976
-# cor(gpp_df[:, :GPP_Obs], gpp_df[:, :GPP_Output])
-
-# ╔═╡ 6f99a7e8-03e9-4fdd-8599-2ca66bee3fa3
-begin
-	# model = lm(@formula(y ~ x), model_df)
-	# r2(model)
-end
-
 # ╔═╡ 5e3aef54-496e-4d4d-9567-ca965bfb3f0a
 begin
-	f = Figure()
+	f = Figure(size=(1000, 1000))
+	
 	ax = Axis(f[1,1], xticks=1:46:length(tower_gpp_df[:, :Key]), xtickformat= (values) -> ["$(i+2002)" for (i,value) in enumerate(values)])
 	
 	lines!(ax, 1:length(tower_gpp_df[:, :Key]),
-		tower_gpp_df[:, :GPP_Obs]
+		tower_gpp_df[:, :GPP_Obs], linewidth=5,
 	)
 	
 	lines!(ax, 1:length(tower_gpp_df[:, :Key]), tower_gpp_df[:, :GPP_Output_c61], color=:red)
@@ -1939,9 +1925,6 @@ version = "3.6.0+0"
 # ╠═f412622f-a5e3-484a-92be-e6fa44de1da5
 # ╠═86cec5e0-e9ec-4a00-8e02-70c0fe632294
 # ╠═c4607492-1457-4b8a-ae56-a1f308372769
-# ╠═c83ef545-cc8d-4ae4-b7f1-8be5db241688
-# ╠═08037839-7de8-48c9-945d-1b1b94e67976
-# ╠═6f99a7e8-03e9-4fdd-8599-2ca66bee3fa3
 # ╠═5e3aef54-496e-4d4d-9567-ca965bfb3f0a
 # ╟─00000000-0000-0000-0000-000000000001
 # ╟─00000000-0000-0000-0000-000000000002
