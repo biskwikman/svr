@@ -72,25 +72,34 @@ begin
     lines!(ax1, 
         1:n_days_1,
         tower_gpp_df[1:n_days_1, :GPP_Obs];
-        linewidth=2,
+        linewidth=3,
         color=:gray,
         linestyle=:dot,
     )
 
-    lines!(ax1, 1:n_days_1, tower_gpp_df[1:n_days_1, :GPP_Output_c61])
+    lines!(ax1, 1:n_days_1, tower_gpp_df[1:n_days_1, :GPP_Output_c05],alpha=0.7,linewidth=2,label="C05")
+    lines!(ax1, 1:n_days_1, tower_gpp_df[1:n_days_1, :GPP_Output_c06],alpha=0.7,linewidth=2,label="C06")
+    lines!(ax1, 1:n_days_1, tower_gpp_df[1:n_days_1, :GPP_Output_c61],alpha=0.7,linewidth=2,label="C61")
+    axislegend(ax1,position = :lt)
 
     lines!(ax2, 
         n_days_1+1:n_days_total,
         tower_gpp_df[n_days_1+1:end, :GPP_Obs];
-        linewidth=2,
+        linewidth=3,
         color=:gray,
         linestyle=:dot,
     )
 
-    lines!(ax2, n_days_1+1:n_days_total, tower_gpp_df[n_days_1+1:end, :GPP_Output_c61])
+    lines!(ax2, n_days_1+1:n_days_total, tower_gpp_df[n_days_1+1:end, :GPP_Output_c05],alpha=0.7,linewidth=2)
+    lines!(ax2, n_days_1+1:n_days_total, tower_gpp_df[n_days_1+1:end, :GPP_Output_c06],alpha=0.7,linewidth=2)
+    lines!(ax2, n_days_1+1:n_days_total, tower_gpp_df[n_days_1+1:end, :GPP_Output_c61],alpha=0.7,linewidth=2)
 
     linkyaxes!(ax1, ax2)
     f
+    # save("svr_single_site.png", f)
 end
 
-println("finished")
+println("done")
+println(cor(collect(skipmissing(tower_gpp_df[:, :GPP_Obs])), collect(skipmissing(tower_gpp_df[:, :GPP_Output_c05]))))
+println(cor(collect(skipmissing(tower_gpp_df[:, :GPP_Obs])), collect(skipmissing(tower_gpp_df[:, :GPP_Output_c06]))))
+println(cor(collect(skipmissing(tower_gpp_df[:, :GPP_Obs])), collect(skipmissing(tower_gpp_df[:, :GPP_Output_c61]))))
