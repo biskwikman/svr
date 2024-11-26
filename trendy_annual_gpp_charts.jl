@@ -25,110 +25,6 @@ begin
 	vers = ["005", "006", "061"]
 end
 
-# ╔═╡ 2362b78a-0069-44ec-8505-8933adcb42f1
-begin
-	function create_charts(svr_data, trendy_data, title)
-		
-		trendy_array = []
-		trendy_array_Δ = []
-		for v in trendy_data
-			push!(trendy_array, v[2])
-			push!(trendy_array_Δ, v[2] .- mean(v[2][1:6]))
-		end
-		trendy_sd = std(trendy_array)
-		trendy_sd_Δ = std(trendy_array_Δ)
-
-		trendy_mean = mean(values(trendy_data))
-		
-		fig = Figure(
-			size = (1400, 1600),
-			figure_padding=30,
-		)
-
-		kwargs = (; titlesize=titlesize,xticklabelsize=ticklabelsize, yticklabelsize=ticklabelsize, xlabelsize=ticklabelsize, ylabelsize=ticklabelsize)
-	
-		ax1 = Axis(
-			fig[1,1];
-			kwargs...,
-			title="GPP",
-			ylabel=L"gC\; m^{2}\; day^{-1}",
-		)
-
-		ax2 = Axis(
-			fig[1,2];
-			kwargs...,
-			title="σGPP",
-		)
-
-		ax3 = Axis(
-			fig[2,1];
-			kwargs...,
-			title="GPP Anomaly",
-			ylabel=L"\Delta gC\; m^{2}\; day^{-1}",
-			xlabel=L"Year",
-		)
-
-		ax4 = Axis(
-			fig[2,2];
-			kwargs...,
-			title="σGPP Anomaly",
-			xlabel=L"Year",
-		)
-
-		colsize!(fig.layout, 1, Aspect(1, 1.2))
-		colsize!(fig.layout, 2, Aspect(2, 1.2))
-		colgap!(fig.layout, 1, 35)
-
-		linkyaxes!(ax1, ax2)
-		linkyaxes!(ax3, ax4)
-		linkxaxes!(ax1, ax3)
-		linkxaxes!(ax2, ax4)
-
-		band_color = "#f4c3db"
-
-		Label(fig[0,:], title, fontsize=55)
-		band!(ax1, years, trendy_mean - trendy_sd, trendy_mean + trendy_sd, color=(band_color, 1))
-		band!(ax3, years, trendy_mean .- mean(trendy_mean[1:6]) - trendy_sd_Δ, trendy_mean .- mean(trendy_mean[1:6]) + trendy_sd_Δ, color=(band_color, 1))
-		
-		for (i, data) in enumerate(trendy_data)
-			model_name = data[1]
-			model_aves = data[2]
-	
-			six_year_ave = mean(model_aves[1:6])
-			
-			lines!(ax1, years, model_aves, linewidth=3, color=(:gray, 0.5))
-			lines!(ax3, years, model_aves .- six_year_ave, linewidth=3, color=(:gray,0.5))
-		end
-
-		for (i, v) in enumerate(["005", "006", "061"])
-			years = v == "005" ? (2000:2015) : (2000:2020)
-			kwargs = (; linewidth=7, color=colormap[i])
-
-			lines!(ax1, years, svr_data[v]; kwargs...)
-			lines!(ax2, years, svr_data[v]; kwargs...)
-		end
-
-		lines!(ax2, years, trendy_mean, linewidth=8, color=:black, alpha=0.7, linestyle=(:dash, 1))
-		
-		lines!(ax3, years, svr_data["061"] .- mean(svr_data["061"][1:6]), linewidth=7, color=colormap[3])
-		lines!(ax3, years, svr_data["006"] .- mean(svr_data["006"][1:6]), linewidth=7, color=colormap[2])
-		lines!(ax3, 2000:2015, svr_data["005"] .- mean(svr_data["005"][1:6]), linewidth=7, color=colormap[1])
-
-		lines!(ax4, years, svr_data["061"] .- mean(svr_data["061"][1:6]), linewidth=7, color=colormap[3])
-		lines!(ax4, years, svr_data["006"] .- mean(svr_data["006"][1:6]), linewidth=7, color=colormap[2])
-		lines!(ax4, 2000:2015, svr_data["005"] .- mean(svr_data["005"][1:6]), linewidth=7, color=colormap[1])
-
-		lines!(ax4, years, trendy_mean .- mean(trendy_mean[1:6]), linewidth=8, color=:black, alpha=0.7, linestyle=(:dash, 1))
-	
-		for (iv, ver) in enumerate(["C5", "C6", "C6.1"])
-			text!(ax1, 0, 1, text=ver, color=colormap[iv], font=:bold, fontsize=versionlabelsize, align=(:left,:top), space=:relative,
-			offset=((iv-1)*80, 0))
-		end
-		resize_to_layout!(fig)
-		return fig
-	end
-end
-
 # ╔═╡ 3c51f339-3c93-412c-9801-047236cbe7a5
 begin
 	regions_file = "./AsiaMIP_qdeg_gosat2.byt"
@@ -365,15 +261,6 @@ begin
 	end
 end
 
-# ╔═╡ 055088dc-2aac-4b87-97f2-e535f90e1724
-begin
-	m =[]
-	for col in eachcol(trendy_data_dfs["Siberia"][!, 2:end])
-		push!(m, col)
-	end
-	length(mean(m))
-end
-
 # ╔═╡ 7cc5ba9d-d601-4b8b-8272-7f029fc05c6f
 begin
 	fig = Figure(size = (1000, 650))
@@ -439,21 +326,6 @@ begin
 	# end
 	fig
 end
-
-# ╔═╡ efcfbf46-d378-4980-99e3-074a2376b16e
-create_charts(svr_data_asia, models_aves, "Asia");
-
-# ╔═╡ 8b5fbe6e-066d-4640-89f4-de184e57f40d
-create_charts(svr_data_e_asia, e_asia_aves, "East Asia");
-
-# ╔═╡ 8f9ad292-c685-4ee7-a115-1bc5ada19b17
-create_charts(svr_data_se_asia, se_asia_aves, "Southeast Asia");
-
-# ╔═╡ e8836197-7ee9-451b-a142-91a3ca459fe3
-create_charts(svr_data_siberia, siberia_aves, "Siberia");
-
-# ╔═╡ b3e17fa8-bd0f-4ea4-b650-18e3a4dcc767
-create_charts(svr_data_s_asia, s_asia_aves, "South Asia");
 
 # ╔═╡ a0b2efb5-a7cb-46f5-8095-4952498342f6
 html"""<style>
@@ -1973,15 +1845,8 @@ version = "3.6.0+0"
 
 # ╔═╡ Cell order:
 # ╠═8b3d72d8-137e-11ef-3ad4-01bbddb651b1
-# ╠═055088dc-2aac-4b87-97f2-e535f90e1724
 # ╠═7cc5ba9d-d601-4b8b-8272-7f029fc05c6f
 # ╠═6c99ff21-bf6c-47fe-ae35-d4f08bcec895
-# ╠═efcfbf46-d378-4980-99e3-074a2376b16e
-# ╠═8b5fbe6e-066d-4640-89f4-de184e57f40d
-# ╠═8f9ad292-c685-4ee7-a115-1bc5ada19b17
-# ╠═e8836197-7ee9-451b-a142-91a3ca459fe3
-# ╠═b3e17fa8-bd0f-4ea4-b650-18e3a4dcc767
-# ╠═2362b78a-0069-44ec-8505-8933adcb42f1
 # ╠═8e2feea6-e0e7-4d46-bee9-5209846761de
 # ╠═3c51f339-3c93-412c-9801-047236cbe7a5
 # ╠═c5c44d74-6646-415a-9960-148102d8a2c5
