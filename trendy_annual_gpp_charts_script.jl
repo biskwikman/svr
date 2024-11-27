@@ -222,18 +222,21 @@ for (region, svr_data, trendy_data) in zip(
 end
 
 for region_df in trendy_data_dfs
-    new_table = transform(trendy_data_dfs[region_df[1]][:,2:end], AsTable(:) => ByRow(mean) => :model_mean)
-    anomaly = new_table[:, end][1:6]
-    trendy_data_dfs[region_df[1]] = 
+    select!(region_df[2], Not([:Years]))
+    transform!(region_df[2], All() .=> x -> x .- mean(x[1:6]))
+    select!(region_df[2], r"function")
+    println(region_df[2])
+    transform!(region_df[2], AsTable(:) => ByRow(std) => :std)
+    transform!(region_df[2], AsTable(Not([:std])) => ByRow(mean) => :mean)
+    trendy_data_dfs[region_df[1]] = region_df[2]
 end
 
+println(trendy_data_dfs)
+
 begin
-titles = ["Siberia" "South Asia"; 
-		"Southeast Asia" "East Asia"]
+titles = ["Siberia", "South Asia", "Southeast Asia", "East Asia"]
 colormap = Makie.wong_colors()
 fig = Figure(size = (600,600))
-
-
 
 axs = [Axis(
     fig[y,x],
@@ -241,17 +244,19 @@ axs = [Axis(
     xlabel="Year",ylabel=rich("kgC m", superscript("2"), " year", superscript("-1")),
     xticks=2000:5:2020,
     xminorgridvisible=true,xminorticks=2000:2020,
-    xlabelvisible=(y == 1 ? false : true),xticklabelsvisible=(x == 2 ? true : false),
+    xlabelvisible=(y == 1 ? false : true),xticklabelsvisible=(y == 2 ? true : false),
     ylabelvisible=(x == 1 ? true : false),
 ) for y in 1:2 for x in 1:2]
 
-lines!(axs[1,1],years,trendy_data_dfs["South Asia"])
-# band!(axs[1,1],years,trendy_)
-# println(transform(trendy_data_dfs["South Asia"][:,2:end], AsTable(:) => ByRow(mean) => :model_mean))
-# println(trendy_data_dfs["South Asia"])
+for (i, region_df) in enumerate(trendy_data_dfs)
+    ax_idx = findfirst(==(region_df[1]), titles)
+    ax = axs[ax_idx]
+    ax.title=region_df[1]
 
-# test = [1,2,3,4,5]
-# println(test[end])
+    band!(ax,years,region_df[2][:, :mean] .- region_df[2][:, :std], region_df[2][:, :mean] .+ region_df[2][:, :std])
+end
+
+linkyaxes!(axs[1],axs[2],axs[3],axs[4])
 
 fig
 end
