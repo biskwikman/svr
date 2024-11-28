@@ -168,6 +168,7 @@ for (i, year) in enumerate(2000:2015)
     push!(svr_aves_c05_siberia, yearly_ave[4])
     push!(svr_aves_c05_s_asia, yearly_ave[5])
 end
+
 svr_data_asia = Dict(
     "005" => svr_aves_c05,
     "006" => svr_aves_c06,
@@ -231,7 +232,12 @@ for region_df in trendy_data_dfs
     trendy_data_dfs[region_df[1]] = region_df[2]
 end
 
-println(trendy_data_dfs)
+for region_df in svr_data_dfs
+    select!(region_df[2], Not([:Years]))
+    transform!(region_df[2], All() .=> x -> x .- mean(x[1:6]))
+    select!(region_df[2], r"function")
+    svr_data_dfs[region_df[1]] = region_df[2]
+end
 
 begin
 titles = ["Siberia", "South Asia", "Southeast Asia", "East Asia"]
@@ -252,11 +258,20 @@ for (i, region_df) in enumerate(trendy_data_dfs)
     ax_idx = findfirst(==(region_df[1]), titles)
     ax = axs[ax_idx]
     ax.title=region_df[1]
+    band!(ax,years,region_df[2][:, :mean] .- region_df[2][:, :std], region_df[2][:, :mean] .+ region_df[2][:, :std], color=:lightgray, label="TRENDYσ")
+end
 
-    band!(ax,years,region_df[2][:, :mean] .- region_df[2][:, :std], region_df[2][:, :mean] .+ region_df[2][:, :std])
+for region_df in svr_data_dfs
+    ax_idx = findfirst(==(region_df[1]), titles)
+    ax = axs[ax_idx]
+    lines!(ax,years,region_df[2][:, "005_function"], linewidth=3, label="C5")
+    lines!(ax,years,region_df[2][:, "006_function"], linewidth=3, label="C6")
+    lines!(ax,years,region_df[2][:, "061_function"], linewidth=3, label="C61")
 end
 
 linkyaxes!(axs[1],axs[2],axs[3],axs[4])
+
+axislegend(axs[1],position=:lt)
 
 fig
 end

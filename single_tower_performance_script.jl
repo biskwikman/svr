@@ -3,22 +3,29 @@ using CSV
 using Printf
 using Statistics
 using CairoMakie
+using SingularSpectrumAnalysis
 
-tower_key = "HFK"
-tower_id = 38
+tower_key = "RUFyo"
+tower_id = 10
 
-ec_df = CSV.read("asia_flux_061.csv", DataFrame);
+ec_df = CSV.read("asia_flux_061.csv", DataFrame)
+
+site_years = unique(select(ec_df, :site_code, :id, [:syear, :eyear] => ((s,e) -> e - s) => :nyears))
+sort!(site_years, :nyears)
+
+tse = subset(ec_df, :site_code => x -> x .== "RUFyo")
+
 
 tower_gpp_df = select(
     filter(
         row -> (row.site_code == tower_key && row.year in row.syear:row.eyear), ec_df
         ),
         [:year, :doy] => ByRow((y,d) -> @sprintf("%s_%03i_%s", y, d, tower_id)) => :Key,
-        # [:year, :doy] => ByRow((y,d) -> "$(y)_$(d)_$(tower_id)") => :Key,
-        :gpp => :GPP_Obs
+        :gpp => :GPP_Obs, :doy
     )
 
 tower_gpp_df.GPP_Obs = replace(tower_gpp_df.GPP_Obs, -9999.0 => missing)
+println(tower_gpp_df)
 
 ensembles = 201:210
 
@@ -48,58 +55,45 @@ for c in ["c05","c06","c61"]
     sort!(tower_gpp_df)
 
 end
+n_days = 644
+# convert(Vector{Float64}, tower_gpp_df[1:n_days, :GPP_Output_c05])
+# println(analyze(convert(Vector{Float64}, tower_gpp_df[1:n_days, :GPP_Output_c05]), 20))
+# println(count(ismissing, tower_gpp_df[1:n_days, :GPP_Obs]))
+# gpp_obs_fill = subset(tower_gpp_df, :DOY => x -> x .== 361)
+# test = transform(tower_gpp_df, :GPP_Obs => ByRow(x -> ismissing(x) ? 1 : 2))
 
-# println(tower_gpp_df)
-
-begin 
-    n_days_1 = 276
-    n_days_total = 598
+begin
+    # n_days = 644
 
     f = Figure(size=(1000, 600))
         
     ax1 = Axis(
             f[1,1]; 
-            xticks=1:46:46*7, 
-            xtickformat=(values) -> ["$(i+2002)" for (i,value) in enumerate(values)],
+            xticks=1:46:645, 
+            xtickformat=(values) -> ["$(i+1999)" for (i,value) in enumerate(values)],
         )
 
-    ax2 = Axis(
-        f[2,1]; 
-        xticks=n_days_1+1:46:n_days_total+46, 
-        xtickformat=(values) -> ["$(i+2008)" for (i,value) in enumerate(values)],
-    )
-
     lines!(ax1, 
-        1:n_days_1,
-        tower_gpp_df[1:n_days_1, :GPP_Obs];
+        1:n_days,
+        tower_gpp_df[1:n_days, :GPP_Obs];
         linewidth=3,
         color=:gray,
         linestyle=:dot,
+        label="EC obs"
     )
 
-    lines!(ax1, 1:n_days_1, tower_gpp_df[1:n_days_1, :GPP_Output_c05],alpha=0.7,linewidth=2,label="C05")
-    lines!(ax1, 1:n_days_1, tower_gpp_df[1:n_days_1, :GPP_Output_c06],alpha=0.7,linewidth=2,label="C06")
-    lines!(ax1, 1:n_days_1, tower_gpp_df[1:n_days_1, :GPP_Output_c61],alpha=0.7,linewidth=2,label="C61")
+    lines!(ax1, 1:n_days, tower_gpp_df[1:n_days, :GPP_Output_c05],alpha=0.7,linewidth=2,label="C05")
+    lines!(ax1, 1:n_days, tower_gpp_df[1:n_days, :GPP_Output_c06],alpha=0.7,linewidth=2,label="C06")
+    lines!(ax1, 1:n_days, tower_gpp_df[1:n_days, :GPP_Output_c61],alpha=0.7,linewidth=2,label="C61")
     axislegend(ax1,position = :lt)
 
-    lines!(ax2, 
-        n_days_1+1:n_days_total,
-        tower_gpp_df[n_days_1+1:end, :GPP_Obs];
-        linewidth=3,
-        color=:gray,
-        linestyle=:dot,
-    )
-
-    lines!(ax2, n_days_1+1:n_days_total, tower_gpp_df[n_days_1+1:end, :GPP_Output_c05],alpha=0.7,linewidth=2)
-    lines!(ax2, n_days_1+1:n_days_total, tower_gpp_df[n_days_1+1:end, :GPP_Output_c06],alpha=0.7,linewidth=2)
-    lines!(ax2, n_days_1+1:n_days_total, tower_gpp_df[n_days_1+1:end, :GPP_Output_c61],alpha=0.7,linewidth=2)
-
-    linkyaxes!(ax1, ax2)
+    println("done")
+    println(cor(collect(skipmissing(tower_gpp_df[:, :GPP_Obs])), collect(skipmissing(tower_gpp_df[:, :GPP_Output_c05]))))
+    println(cor(collect(skipmissing(tower_gpp_df[:, :GPP_Obs])), collect(skipmissing(tower_gpp_df[:, :GPP_Output_c06]))))
+    println(cor(collect(skipmissing(tower_gpp_df[:, :GPP_Obs])), collect(skipmissing(tower_gpp_df[:, :GPP_Output_c61]))))
+    # linkyaxes!(ax1, ax2)
     f
     # save("svr_single_site.png", f)
-end
 
-println("done")
-println(cor(collect(skipmissing(tower_gpp_df[:, :GPP_Obs])), collect(skipmissing(tower_gpp_df[:, :GPP_Output_c05]))))
-println(cor(collect(skipmissing(tower_gpp_df[:, :GPP_Obs])), collect(skipmissing(tower_gpp_df[:, :GPP_Output_c06]))))
-println(cor(collect(skipmissing(tower_gpp_df[:, :GPP_Obs])), collect(skipmissing(tower_gpp_df[:, :GPP_Output_c61]))))
+
+end
