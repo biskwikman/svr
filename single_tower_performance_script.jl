@@ -15,17 +15,20 @@ sort!(site_years, :nyears)
 
 tse = subset(ec_df, :site_code => x -> x .== "RUFyo")
 
-
 tower_gpp_df = select(
     filter(
         row -> (row.site_code == tower_key && row.year in row.syear:row.eyear), ec_df
         ),
         [:year, :doy] => ByRow((y,d) -> @sprintf("%s_%03i_%s", y, d, tower_id)) => :Key,
-        :gpp => :GPP_Obs, :doy
+        :gpp => :GPP_Obs, :doy, :year
     )
 
-tower_gpp_df.GPP_Obs = replace(tower_gpp_df.GPP_Obs, -9999.0 => missing)
-println(tower_gpp_df)
+# Replace missing with seasonal average
+# tower_gpp_df.GPP_Obs = replace(tower_gpp_df.GPP_Obs, -9999.0 => missing)
+# mean_361 = mean(skipmissing(subset(tower_gpp_df, :doy => x -> x .== 361)[:, :GPP_Obs]))
+# tower_gpp_df.GPP_Obs = replace(tower_gpp_df.GPP_Obs, missing => mean_361)
+yt, ys = analyze(tower_gpp_df[!,"GPP_Obs"], 46, robust=true)
+tower_gpp_df[!, "GPP_Obs_Trend"] = yt
 
 ensembles = 201:210
 
@@ -51,9 +54,13 @@ for c in ["c05","c06","c61"]
         output_gpp_df = combine(groupby(filter(row -> row.Site_ID == tower_id, output_df), :Key), :GPP => mean => Symbol("GPP_Output_$c"))
     end
 
+
     global tower_gpp_df = leftjoin(tower_gpp_df, output_gpp_df, on=:Key)
+    tower_gpp_df[!,"GPP_Output_$c"] = replace(tower_gpp_df[!,"GPP_Output_$c"], missing=>-9999.0)
     sort!(tower_gpp_df)
 
+    yt, ys = analyze(tower_gpp_df[!,"GPP_Output_$c"], 46, robust=true)
+    tower_gpp_df[!, "GPP_Output_$(c)_Trend"] = yt
 end
 n_days = 644
 # convert(Vector{Float64}, tower_gpp_df[1:n_days, :GPP_Output_c05])
@@ -74,23 +81,34 @@ begin
         )
 
     lines!(ax1, 
-        1:n_days,
-        tower_gpp_df[1:n_days, :GPP_Obs];
+        1:nrow(tower_gpp_df),
+        tower_gpp_df.GPP_Obs_Trend;
         linewidth=3,
         color=:gray,
         linestyle=:dot,
         label="EC obs"
     )
 
-    lines!(ax1, 1:n_days, tower_gpp_df[1:n_days, :GPP_Output_c05],alpha=0.7,linewidth=2,label="C05")
-    lines!(ax1, 1:n_days, tower_gpp_df[1:n_days, :GPP_Output_c06],alpha=0.7,linewidth=2,label="C06")
-    lines!(ax1, 1:n_days, tower_gpp_df[1:n_days, :GPP_Output_c61],alpha=0.7,linewidth=2,label="C61")
+    gpp_obs = replace(tower_gpp_df.GPP_Obs, -9999.0 => missing)
+    println(tower_gpp_df)
+    lines!(ax1, 
+        1:nrow(tower_gpp_df),
+        gpp_obs,
+        linewidth=3,
+        color=:gray,
+        linestyle=:dot,
+        label="EC obs"
+    )
+
+    lines!(ax1, 1:nrow(tower_gpp_df), tower_gpp_df.GPP_Output_c05_Trend,alpha=0.7,linewidth=2,label="C05")
+    lines!(ax1, 1:nrow(tower_gpp_df), tower_gpp_df.GPP_Output_c06_Trend,alpha=0.7,linewidth=2,label="C06")
+    lines!(ax1, 1:nrow(tower_gpp_df), tower_gpp_df.GPP_Output_c61_Trend,alpha=0.7,linewidth=2,label="C61")
     axislegend(ax1,position = :lt)
 
     println("done")
-    println(cor(collect(skipmissing(tower_gpp_df[:, :GPP_Obs])), collect(skipmissing(tower_gpp_df[:, :GPP_Output_c05]))))
-    println(cor(collect(skipmissing(tower_gpp_df[:, :GPP_Obs])), collect(skipmissing(tower_gpp_df[:, :GPP_Output_c06]))))
-    println(cor(collect(skipmissing(tower_gpp_df[:, :GPP_Obs])), collect(skipmissing(tower_gpp_df[:, :GPP_Output_c61]))))
+    # println(cor(collect(skipmissing(tower_gpp_df[:, :GPP_Obs])), collect(skipmissing(tower_gpp_df[:, :GPP_Output_c05]))))
+    # println(cor(collect(skipmissing(tower_gpp_df[:, :GPP_Obs])), collect(skipmissing(tower_gpp_df[:, :GPP_Output_c06]))))
+    # println(cor(collect(skipmissing(tower_gpp_df[:, :GPP_Obs])), collect(skipmissing(tower_gpp_df[:, :GPP_Output_c61]))))
     # linkyaxes!(ax1, ax2)
     f
     # save("svr_single_site.png", f)
