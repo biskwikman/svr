@@ -151,8 +151,8 @@ end
 # ╔═╡ 97fce899-bdf2-4afa-9851-7a9ec1ba408b
 begin
 	c05_lm_df = @subset(mdf, :Version .== Symbol("c05"), :Ensemble .== "Ensemble Mean")
-	c06_lm_df = @subset(mdf, :Version .== Symbol("c06"), :Ensemble .== "209")
-	c61_lm_df = @subset(mdf, :Version .== Symbol("c61"), :Ensemble .== "209")
+	c06_lm_df = @subset(mdf, :Version .== Symbol("c06"), :Ensemble .== "Ensemble Mean")
+	c61_lm_df = @subset(mdf, :Version .== Symbol("c61"), :Ensemble .== "Ensemble Mean")
 	select!(c05_lm_df, :Input_GPP => :x, :GPP => :Y)
 	select!(c06_lm_df, :Input_GPP => :x, :GPP => :Y)
 	select!(c61_lm_df, :Input_GPP => :x, :GPP => :Y)
@@ -258,7 +258,7 @@ StatsBase = "~0.34.2"
 PLUTO_MANIFEST_TOML_CONTENTS = """
 # This file is machine-generated - editing it directly is not advised
 
-julia_version = "1.11.1"
+julia_version = "1.11.2"
 manifest_format = "2.0"
 project_hash = "b6158423467fdccc88a7838bd81c7aac496ddc88"
 

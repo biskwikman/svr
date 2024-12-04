@@ -27,7 +27,8 @@ tower_gpp_df = select(
 # tower_gpp_df.GPP_Obs = replace(tower_gpp_df.GPP_Obs, -9999.0 => missing)
 # mean_361 = mean(skipmissing(subset(tower_gpp_df, :doy => x -> x .== 361)[:, :GPP_Obs]))
 # tower_gpp_df.GPP_Obs = replace(tower_gpp_df.GPP_Obs, missing => mean_361)
-yt, ys = analyze(tower_gpp_df[!,"GPP_Obs"], 46, robust=true)
+L = 322
+yt, ys = analyze(tower_gpp_df[!,"GPP_Obs"], L, robust=true)
 tower_gpp_df[!, "GPP_Obs_Trend"] = yt
 
 ensembles = 201:210
@@ -59,7 +60,7 @@ for c in ["c05","c06","c61"]
     tower_gpp_df[!,"GPP_Output_$c"] = replace(tower_gpp_df[!,"GPP_Output_$c"], missing=>-9999.0)
     sort!(tower_gpp_df)
 
-    yt, ys = analyze(tower_gpp_df[!,"GPP_Output_$c"], 46, robust=true)
+    yt, ys = analyze(tower_gpp_df[!,"GPP_Output_$c"], L, robust=true)
     tower_gpp_df[!, "GPP_Output_$(c)_Trend"] = yt
 end
 n_days = 644
@@ -76,33 +77,35 @@ begin
         
     ax1 = Axis(
             f[1,1]; 
-            xticks=1:46:645, 
+            xticks=1:46:691, 
             xtickformat=(values) -> ["$(i+1999)" for (i,value) in enumerate(values)],
         )
+        ylims!(ax1, 2.5, 5)
 
     lines!(ax1, 
         1:nrow(tower_gpp_df),
-        tower_gpp_df.GPP_Obs_Trend;
+        convert(Vector{Union{Missing, Float64}},tower_gpp_df.GPP_Obs_Trend);
         linewidth=3,
         color=:gray,
         linestyle=:dot,
         label="EC obs"
     )
 
-    gpp_obs = replace(tower_gpp_df.GPP_Obs, -9999.0 => missing)
-    println(tower_gpp_df)
-    lines!(ax1, 
-        1:nrow(tower_gpp_df),
-        gpp_obs,
-        linewidth=3,
-        color=:gray,
-        linestyle=:dot,
-        label="EC obs"
-    )
+    # gpp_obs = replace(tower_gpp_df.GPP_Obs, -9999.0 => missing)
+    # println(typeof(gpp_obs), " - ", typeof(tower_gpp_df.GPP_Obs_Trend))
+    # lines!(ax1, 
+    #     1:nrow(tower_gpp_df),
+    #     gpp_obs,
+    #     linewidth=3,
+    #     color=:gray,
+    #     linestyle=:dot,
+    #     label="EC obs"
+    # )
 
     lines!(ax1, 1:nrow(tower_gpp_df), tower_gpp_df.GPP_Output_c05_Trend,alpha=0.7,linewidth=2,label="C05")
     lines!(ax1, 1:nrow(tower_gpp_df), tower_gpp_df.GPP_Output_c06_Trend,alpha=0.7,linewidth=2,label="C06")
     lines!(ax1, 1:nrow(tower_gpp_df), tower_gpp_df.GPP_Output_c61_Trend,alpha=0.7,linewidth=2,label="C61")
+    println(typeof(tower_gpp_df.GPP_Output_c61_Trend))
     axislegend(ax1,position = :lt)
 
     println("done")
