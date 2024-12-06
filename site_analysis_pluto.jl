@@ -15,6 +15,12 @@ begin
 	using StatsBase
 end
 
+# ╔═╡ 03acc56f-029f-4562-a1b7-13f5c1daa675
+@chain veg_df begin
+	leftjoin(igbp_df, on="Veg_Type_Code")
+	
+end
+
 # ╔═╡ dbc1352c-a1e2-4936-8890-b3e5b5bb907b
 # Global variables and veg type key
 begin
@@ -26,12 +32,6 @@ begin
 	forest_ids = forest_sites_df[!, 2]
 	versions = [:c05, :c06, :c61]
 	ensembles = 201:210; nothing
-end
-
-# ╔═╡ 03acc56f-029f-4562-a1b7-13f5c1daa675
-@chain veg_df begin
-	leftjoin(igbp_df, on="Veg_Type_Code")
-	
 end
 
 # ╔═╡ a654ecfe-9563-437e-83d6-8c9c98363c14
