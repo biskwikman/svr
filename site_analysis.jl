@@ -1,7 +1,7 @@
 using CSV
 using DataFrames
 using DataFramesMeta
-using GLMakie
+using CairoMakie
 using GLM
 using Printf
 using StatsBase

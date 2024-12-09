@@ -52,9 +52,6 @@ begin
 	versions = ["005", "006", "061"]
 end
 
-# ╔═╡ e47d4e6b-2126-4113-b55e-05eb3db639d3
-typeof(convert(Float32,line_years[end]))
-
 # ╔═╡ 51dbe244-701e-425e-9c9c-752597339240
 function get_sample_data()
 	sample_filepath = "./out_c05/YEAR_cor/GPP.ALL.AVERAGE.2015.flt"
@@ -237,12 +234,13 @@ function create_averages(areas, sample_missing, region_name)
 
 		# For each version in each year
 		for (k, v) in product_means
-			ensemble = "209"
+			ensemble = "AVERAGE"
 			if k == "005"
 				out = "out_c05"
-				ensemble = "AVERAGE"
+				# ensemble = "AVERAGE"
 			elseif k == "006"
 				out = "out_c06"
+				# ensemble = "201"
 			elseif k == "061"
 				out = "out_c61"
 			end
@@ -376,7 +374,7 @@ StatsBase = "~0.34.2"
 PLUTO_MANIFEST_TOML_CONTENTS = """
 # This file is machine-generated - editing it directly is not advised
 
-julia_version = "1.11.1"
+julia_version = "1.11.2"
 manifest_format = "2.0"
 project_hash = "f2034cd4d406b08e1be1627c9aee3656edc434ce"
 
@@ -2478,7 +2476,6 @@ version = "3.6.0+0"
 # ╠═ba842c64-3f63-42c2-bade-d1d640d254b4
 # ╠═15ebd3be-f34d-496e-87d9-fc9af5762b25
 # ╠═06c0b1bb-f598-4d87-9792-9134eb2b56c5
-# ╠═e47d4e6b-2126-4113-b55e-05eb3db639d3
 # ╠═bb134d7c-a599-498d-8830-575cb7d8fb0e
 # ╠═5a9d0a90-0270-43e9-acf6-a82027cf1ec6
 # ╠═51dbe244-701e-425e-9c9c-752597339240
