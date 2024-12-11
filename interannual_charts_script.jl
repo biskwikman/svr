@@ -36,12 +36,10 @@ end
 
 areas_file = "./AsiaMIP_qdeg_area.flt"
 mask_file = "./AsiaMIP_qdeg_gosat2.byt"
-# sample_file = "./out_c5/YEAR_cor/GPP.FLX.AVERAGE.2000.bsq.flt"
 years = range(2000, 2020)
 mod11a2 = ["LST_Day", "LST_Night"]
 mod13a2 = ["EVI", "NDVI"]
 mod15a2 = ["Fpar", "Lai"]
-# datasets = ["LST_Day", "LST_Night", "EVI", "NDVI", "Fpar", "Lai"]
 products = Dict(
     "MOD11A2" => mod11a2,
     "MOD13A2" => mod13a2,
@@ -57,7 +55,7 @@ yearly_means = Dict(
     "East Asia" => Dict{String, Float32}(), 
 )
 
-    chart_data = Dict(
+chart_data = Dict(
     "South Asia" => Dict{String, Vector{Union{Missing, Float32}}}(
         "005" => [],
         "005_var" => [],
@@ -113,6 +111,7 @@ regions = Dict(
 )
 
 function get_monthly_vals(filepath, areas, sample_missing, region_name)
+    occursin("c06", filepath) ? println(filepath) : nothing; 
 	asia = Array{Float32}(undef, (480, 360, 12))
 	read!(filepath, asia)
 	# Restrict data to either Missing or Float32
@@ -143,16 +142,15 @@ function create_averages(areas, sample_missing, region_name)
 	
 	# for each year
 	for i in string.(collect(years))
+        println(i)
 
 		# For each version in each year
 		for (k, v) in product_means
 			ensemble = "AVERAGE"
 			if k == "005"
 				out = "out_c05"
-				# ensemble = "AVERAGE"
 			elseif k == "006"
 				out = "out_c06"
-				# ensemble = "201"
 			elseif k == "061"
 				out = "out_c61"
 			end
@@ -174,6 +172,7 @@ valid_areas[sample_missing] .= missing
 
 monthly_vals = undef
 for region_name in region_names
+    println(region_name)
     monthly_vals = create_averages(valid_areas, sample_missing, region_name)
     for (key, val) in monthly_vals
         chart_data[region_name][key] = mean.(val)
