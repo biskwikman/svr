@@ -111,13 +111,12 @@ regions = Dict(
 )
 
 function get_monthly_vals(filepath, areas, sample_missing, region_name)
-    occursin("c06", filepath) ? println(filepath) : nothing; 
 	asia = Array{Float32}(undef, (480, 360, 12))
 	read!(filepath, asia)
 	# Restrict data to either Missing or Float32
 	asia = convert(Array{Union{Missing, Float32}}, asia)
 	# Replace -9999 values with missing
-	replace!(asia, -999.0 => missing)
+	replace!(asia, -9999.0 => missing)
 	# Apply Weights
 	file_missing = findall(x -> ismissing(x), asia[:,:,1])
 	result = valid_areas .* asia
@@ -142,7 +141,6 @@ function create_averages(areas, sample_missing, region_name)
 	
 	# for each year
 	for i in string.(collect(years))
-        println(i)
 
 		# For each version in each year
 		for (k, v) in product_means
@@ -172,22 +170,16 @@ valid_areas[sample_missing] .= missing
 
 monthly_vals = undef
 for region_name in region_names
-    println(region_name)
     monthly_vals = create_averages(valid_areas, sample_missing, region_name)
     for (key, val) in monthly_vals
         chart_data[region_name][key] = mean.(val)
-        # chart_data["GPP"][key] = mean.(val)
     end
 end
-# chart_data["GPP"]
 
 TheilSenRegressor = @load TheilSenRegressor pkg=MLJScikitLearnInterface
 ts_regr = TheilSenRegressor()
 chart_data_df = Dict()
 for (i, dataset) in enumerate(region_names)
-    #SOMETHING WRONG HERE
-    println(dataset)
-    println(chart_data[dataset]["006"])
     limits = []
     mean005 = mean(chart_data[dataset]["005"][1:6])
     mean006 = mean(chart_data[dataset]["006"][1:6])
@@ -228,8 +220,6 @@ for i in CartesianIndices(titles)
     Label(f[i[1], i[2]][0,1:2], titles[i], font=:bold, fontsize=20,)
 end
 
-# rowgap!(f.layout, 1[1], -100)
-
 axs = [Axis(
         f[y,x][1,inner],
         title=(inner == 1 ? "2000-2015" : "2000-2020"),
@@ -253,14 +243,15 @@ for (i_r, region) in enumerate(chart_data_df)
     colormap = Makie.wong_colors()
     axis_cartesian_idx = findall(x->x == region[1], titles)
     axis_idx = LinearIndices(titles)[axis_cartesian_idx][1]
+    println(chart_data_df[region[1]])
     for (i_v, ver) in enumerate(vers)
         lines!(axs[axis_idx], convert(Vector{Float32},line_years[1:16]), chart_data_df[region[1]][:, ver][1:16], color=colormap[i_v], linewidth=linewidth, alpha=0.5)
         lines!(axs[axis_idx], convert(Vector{Float32},line_years), chart_data_df[region[1]][:, ver*"_2015_regr"], color=colormap[i_v], linewidth=reglinewidth, linestyle=linestyle)
     end
     for (i_v, ver) in enumerate(vers)
-        # lines!(axs[axis_idx+4], convert(Vector{Float32},line_years), chart_data_df[region[1]][:, ver], color=colormap[i_v], linewidth=linewidth, alpha=0.5)
+        y_data = replace(chart_data_df[region[1]][:,ver], missing=>NaN)
+        lines!(axs[axis_idx+4], convert(Vector{Float32},line_years), y_data, color=colormap[i_v], linewidth=linewidth, alpha=0.5)
         lines!(axs[axis_idx+4], convert(Vector{Float32},line_years), chart_data_df[region[1]][:, ver*"_2020_regr"], color=colormap[i_v], linewidth=reglinewidth, linestyle=linestyle)
-        
     end
 end
 
@@ -276,3 +267,4 @@ end
 resize_to_layout!(f)
 f
 end
+# save("/home/dan/Documents/modis_svr_paper/graphics/svr_charts.png")
