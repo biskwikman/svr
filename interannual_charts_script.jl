@@ -30,7 +30,7 @@ function get_sample_data()
 	read!(sample_filepath, prod_sample)
 	prod_sample = convert(Array{Union{Missing, Float32}}, prod_sample)
 	replace!(prod_sample, -999.0 => missing)
-	prod_missing_areas = findall(x -> ismissing(x), prod_sample)
+    prod_missing_areas = findall(x -> ismissing(x), prod_sample)
 	return prod_missing_areas
 end
 

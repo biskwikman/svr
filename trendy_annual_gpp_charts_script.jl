@@ -5,6 +5,8 @@ using StatsBase
 using DataFrames
 using BenchmarkTools
 
+println("Begin")
+
 models = [
 		"cable_pop",
 		"classic",
@@ -113,9 +115,10 @@ svr_aves_c61_siberia::Vector{Float32} = []
 svr_aves_c61_s_asia::Vector{Float32} = []
 for (i, year) in enumerate(years)
     yearly_ave_spatial = Array{Float32}(undef, (480, 360))
-    read!("./out_c61/YEAR_cor/GPP.ALL.209.$year.flt", yearly_ave_spatial)
+    read!("./out_c61/YEAR_cor/GPP.ALL.AVERAGE.$year.flt", yearly_ave_spatial)
     yearly_ave_spatial = convert(Array{Union{Missing, Float32}}, yearly_ave_spatial)
     replace!(yearly_ave_spatial, -9999.0 => missing)
+    replace!(yearly_ave_spatial, -999.0 => missing)
     reverse!(yearly_ave_spatial; dims=2)
 
     yearly_ave = apply_weights(yearly_ave_spatial, areas, regions)
@@ -221,12 +224,12 @@ for (region, svr_data, trendy_data) in zip(
     svr_data_dfs[region] = svr_df
     trendy_data_dfs[region] = trendy_df
 end
+println(svr_data_dfs)
 
 for region_df in trendy_data_dfs
     select!(region_df[2], Not([:Years]))
     transform!(region_df[2], All() .=> x -> x .- mean(x[1:6]))
     select!(region_df[2], r"function")
-    println(region_df[2])
     transform!(region_df[2], AsTable(:) => ByRow(std) => :std)
     transform!(region_df[2], AsTable(Not([:std])) => ByRow(mean) => :mean)
     trendy_data_dfs[region_df[1]] = region_df[2]
@@ -258,7 +261,7 @@ for (i, region_df) in enumerate(trendy_data_dfs)
     ax_idx = findfirst(==(region_df[1]), titles)
     ax = axs[ax_idx]
     ax.title=region_df[1]
-    band!(ax,years,region_df[2][:, :mean] .- region_df[2][:, :std], region_df[2][:, :mean] .+ region_df[2][:, :std], color=:lightgray, label="TRENDYσ")
+    band!(ax,years,region_df[2][:, :mean] .- region_df[2][:, :std], region_df[2][:, :mean] .+ region_df[2][:, :std], color=:lightgray, label="TRENDY")
 end
 
 for region_df in svr_data_dfs
@@ -274,4 +277,5 @@ linkyaxes!(axs[1],axs[2],axs[3],axs[4])
 axislegend(axs[1],position=:lt)
 
 fig
+save("/home/dan/Documents/modis_svr_paper/graphics/trendy_charts.png", fig)
 end

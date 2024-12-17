@@ -61,4 +61,64 @@ function create_figure(trend_array::Array)
     )
     return fig
 end
+# create_figure(trend_array_2020)
 # save("/home/dan/Documents/modis_svr_paper/graphics/svr_maps.png", create_figure(trend_array_2020))
+
+function create_differential_maps(trend_array::Array)
+    colormap_label = L"kgC\; m^2\; year^{-1}"
+    ticklabelsize=40
+    colorbarlabelsize=40
+    titlesize=40
+    colspacing=Relative(0.08)
+    hm=undef
+    rowspacing=Relative(-0.1)
+    fig = Figure(size = (1200, 800))
+    
+    ax1 = Axis(fig[1,1], title="Change from C5 to C6",
+            xticklabelsvisible=false,
+            yticklabelsvisible=false,
+            xticksvisible=false,
+            yticksvisible=false,
+            limits=((60, 180), (-10, 80)),
+            titlesize=titlesize,
+            aspect=DataAspect()
+        )
+    ax2 = Axis(fig[1,2], title="Change from C6 to C6.1",
+            xticklabelsvisible=false,
+            yticklabelsvisible=false,
+            xticksvisible=false,
+            yticksvisible=false,
+            limits=((60, 180), (-10, 80)),
+            titlesize=titlesize,
+            aspect=DataAspect()
+        )
+    
+    poly!(ax1, GeoMakie.land(), color=:gray)
+    poly!(ax2, GeoMakie.land(), color=:gray)
+    hm = heatmap!(ax1, 60..180, -10..80, trend_array_2015[:,:,2]
+    - trend_array_2015[:,:,1];
+    colorrange=colorrange, colormap=colorgradient_diff
+    )
+    heatmap!(ax2, 60..180, -10..80, trend_array_2020[:,:,3]
+    - trend_array_2020[:,:,2];
+    colorrange=colorrange, colormap=colorgradient_diff
+    )
+    lines!(ax1, GeoMakie.coastlines(), color=:gray, linewidth=0.5)
+    lines!(ax2, GeoMakie.coastlines(), color=:gray, linewidth=0.5)
+
+    Colorbar(
+        fig[1,1:2][2,1], colorrange=colorrange, colormap=colorgradient_diff,
+        labelsize=45,
+        label=colormap_label,
+        vertical=false,
+        ticklabelsize=ticklabelsize,
+        ticks=ticks, tickformat=tickformat,
+        width=Relative(4/5),
+        flipaxis=false,
+        size=40,
+    )
+
+    return fig
+end
+create_differential_maps(trend_array_2020)
+save("/home/dan/Documents/modis_svr_paper/graphics/svr_maps_diff.png")
